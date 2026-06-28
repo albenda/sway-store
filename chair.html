@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>לאונג'ר חוף מתקפל · Sway</title>
+<meta name="description" content="לאונג'ר חוף נמוך ומתקפל של Sway — משענת מתכווננת, שלד אלומיניום קל, מתקפל לתיק נשיאה. במבצע ₪199." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="store.css">
+</head>
+<body>
+
+<header class="nav">
+  <a href="index.html" class="logo">Sway</a>
+  <nav class="links"><a href="index.html">הערסל</a><a href="shop.html" class="cta">החנות</a></nav>
+</header>
+
+<section class="wrap">
+  <div class="pdp">
+    <div class="media"><img id="mainimg" src="assets/products/chair/chair_cream.png" alt="לאונג'ר חוף מתקפל של Sway על החול"></div>
+    <div>
+      <div class="crumbs"><a href="shop.html">החנות</a> / לאונג'ר חוף</div>
+      <h1>לאונג'ר חוף מתקפל</h1>
+      <div class="stars">★★★★★ <small>4.6 · אלפי מכירות · מוצר מבוקש</small></div>
+      <div class="pricerow"><span class="now">₪199</span><span class="was">₪349</span></div>
+      <div class="save">מבצע השקה · חיסכון ₪150</div>
+      <p class="lead">כיסא חוף נמוך עם משענת מתכווננת ומושב מרופד. נפתח בשנייה, יושב יציב על החול, ומתקפל לתיק נשיאה שנכנס לתא המטען.</p>
+
+      <div class="opts" id="colorPick">
+        <button type="button" class="swatch sel" data-color="cream" data-img="assets/products/chair/chair_cream.png"><span class="dot cream"></span> קרם</button>
+        <button type="button" class="swatch" data-color="green" data-img="assets/products/chair/chair_green.png"><span class="dot green"></span> ירוק</button>
+        <button type="button" class="swatch" data-color="black" data-img="assets/products/chair/chair_black.png"><span class="dot black"></span> שחור</button>
+      </div>
+      <div class="qtyrow">כמות:
+        <button type="button" class="qbtn" data-q="-1">−</button>
+        <span id="qty">1</span>
+        <button type="button" class="qbtn" data-q="1">+</button>
+      </div>
+
+      <a href="#" class="btn big" data-buy data-product="chair">קנו עכשיו · ₪199 ›</a>
+      <div class="pay">תשלום מאובטח · אשראי / ביט / Apple Pay</div>
+      <div class="trust">
+        <span><span class="d"></span> משלוח חינם למרכז</span>
+        <span><span class="d"></span> 30 יום אחריות החזרה</span>
+      </div>
+
+      <ul class="feat">
+        <li><b>שלד</b><span>אלומיניום קל ועמיד</span></li>
+        <li><b>בד</b><span>Oxford מרופד, נעים ומתייבש מהר</span></li>
+        <li><b>משענת</b><span>מתכווננת לכמה זוויות</span></li>
+        <li><b>מתקפל לתיק</b><span>51×24 ס״מ · רצועת כתף</span></li>
+        <li><b>צבעים</b><span>קרם / ירוק / שחור</span></li>
+        <li><b>מתאים ל-</b><span>חוף, גינה, פארק, קמפינג</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div><div class="logo">Sway</div><div style="margin-top:8px;color:#9fb0ad">הרוגע שהולך איתך.</div></div>
+    <div style="text-align:start">
+      <div><a href="shipping.html">משלוחים</a> · <a href="returns.html">החזרות</a> · <a href="terms.html">תקנון</a></div>
+      <div style="margin-top:8px">צרו קשר: <a href="https://wa.me/972000000000">וואטסאפ</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  var item = { product: 'chair', color: 'cream', qty: 1 };
+  var picker = document.getElementById('colorPick');
+  if (picker) picker.querySelectorAll('.swatch').forEach(function(b){
+    b.addEventListener('click', function(){
+      item.color = b.dataset.color;
+      picker.querySelectorAll('.swatch').forEach(function(x){ x.classList.remove('sel'); });
+      b.classList.add('sel');
+      var mi = document.getElementById('mainimg');
+      if (mi && b.dataset.img) mi.src = b.dataset.img;
+    });
+  });
+  var qEl = document.getElementById('qty');
+  document.querySelectorAll('.qbtn').forEach(function(b){
+    b.addEventListener('click', function(){
+      item.qty = Math.min(10, Math.max(1, item.qty + parseInt(b.dataset.q, 10)));
+      if (qEl) qEl.textContent = item.qty;
+    });
+  });
+  document.querySelectorAll('[data-buy]').forEach(function(b){
+    b.addEventListener('click', async function(e){
+      e.preventDefault();
+      var label = b.textContent;
+      b.setAttribute('disabled','1'); b.textContent = 'מעבד…';
+      try {
+        var r = await fetch('/api/checkout', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(item) });
+        var d = await r.json();
+        if (d && d.url) { window.location.href = d.url; return; }
+        alert('שגיאה ביצירת התשלום. נסו שוב בעוד רגע.');
+      } catch (err) {
+        alert('החנות עדיין לא פרוסה לאוויר. אחרי העלאה ל-Vercel עם מפתחות PayPlus, הכפתור יוביל לתשלום אמיתי.');
+      }
+      b.removeAttribute('disabled'); b.textContent = label;
+    });
+  });
+</script>
+</body>
+</html>

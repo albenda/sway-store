@@ -1,0 +1,9 @@
+# internal / working files — keep out of the public site
+index_v1_backup.html
+PRODUCTS-SOURCING.md
+STORE-SETUP.md
+_overlay/
+**/real/
+_*.png
+*.b64
+.DS_Store

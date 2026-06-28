@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>מגבת מיקרופייבר ענקית · Sway</title>
+<meta name="description" content="מגבת מיקרופייבר גדולה של Sway — קלה, מתייבשת מהר, דוחה חול ונכנסת לכל תיק. במבצע ₪59." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="store.css">
+</head>
+<body>
+
+<header class="nav">
+  <a href="index.html" class="logo">Sway</a>
+  <nav class="links"><a href="index.html">הערסל</a><a href="shop.html" class="cta">החנות</a></nav>
+</header>
+
+<section class="wrap">
+  <div class="pdp">
+    <div class="media"><img id="mainimg" src="assets/products/towel/towel_teal.png" alt="מגבת מיקרופייבר גדולה בפסים של Sway, פרושה ובתוך נרתיק נשיאה"></div>
+    <div>
+      <div class="crumbs"><a href="shop.html">החנות</a> / מגבת מיקרופייבר</div>
+      <h1>מגבת מיקרופייבר ענקית</h1>
+      <div class="stars">★★★★★ <small>4.8 · אלפי מכירות · רב-מכר</small></div>
+      <div class="pricerow"><span class="now">₪59</span><span class="was">₪99</span></div>
+      <div class="save">מבצע השקה · חיסכון ₪40</div>
+      <p class="lead">מגבת ענקית וקלילה שמתייבשת תוך דקות, דוחה חול ומתקפלת קטן לתוך כל תיק. החברה המושלמת לים, לבריכה ולטיול.</p>
+
+      <div class="opts" id="colorPick">
+        <button type="button" class="swatch sel" data-color="teal" data-img="assets/products/towel/towel_teal.png"><span class="dot blue"></span> תכלת</button>
+        <button type="button" class="swatch" data-color="sand" data-img="assets/products/towel/towel_sand.png"><span class="dot cream"></span> חול</button>
+      </div>
+      <div class="qtyrow">כמות:
+        <button type="button" class="qbtn" data-q="-1">−</button>
+        <span id="qty">1</span>
+        <button type="button" class="qbtn" data-q="1">+</button>
+      </div>
+
+      <a href="#" class="btn big" data-buy data-product="towel">קנו עכשיו · ₪59 ›</a>
+      <div class="pay">תשלום מאובטח · אשראי / ביט / Apple Pay</div>
+      <div class="trust">
+        <span><span class="d"></span> משלוח חינם למרכז</span>
+        <span><span class="d"></span> 30 יום אחריות החזרה</span>
+      </div>
+
+      <ul class="feat">
+        <li><b>חומר</b><span>מיקרופייבר רך וסופג</span></li>
+        <li><b>ייבוש</b><span>מהיר — מוכנה לתיק תוך דקות</span></li>
+        <li><b>דוחה חול</b><span>מנערים והחול יורד</span></li>
+        <li><b>מידה</b><span>גדולה · 80×160 ס״מ</span></li>
+        <li><b>קומפקטית</b><span>מתקפלת לכיס קטן עם רצועה</span></li>
+        <li><b>מתאים ל-</b><span>ים, בריכה, חדר כושר, טיול</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div><div class="logo">Sway</div><div style="margin-top:8px;color:#9fb0ad">הרוגע שהולך איתך.</div></div>
+    <div style="text-align:start">
+      <div><a href="shipping.html">משלוחים</a> · <a href="returns.html">החזרות</a> · <a href="terms.html">תקנון</a></div>
+      <div style="margin-top:8px">צרו קשר: <a href="https://wa.me/972000000000">וואטסאפ</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  var item = { product: 'towel', color: 'teal', qty: 1 };
+  var picker = document.getElementById('colorPick');
+  if (picker) picker.querySelectorAll('.swatch').forEach(function(b){
+    b.addEventListener('click', function(){
+      item.color = b.dataset.color;
+      picker.querySelectorAll('.swatch').forEach(function(x){ x.classList.remove('sel'); });
+      b.classList.add('sel');
+      var mi = document.getElementById('mainimg');
+      if (mi && b.dataset.img) mi.src = b.dataset.img;
+    });
+  });
+  var qEl = document.getElementById('qty');
+  document.querySelectorAll('.qbtn').forEach(function(b){
+    b.addEventListener('click', function(){
+      item.qty = Math.min(10, Math.max(1, item.qty + parseInt(b.dataset.q, 10)));
+      if (qEl) qEl.textContent = item.qty;
+    });
+  });
+  document.querySelectorAll('[data-buy]').forEach(function(b){
+    b.addEventListener('click', async function(e){
+      e.preventDefault();
+      var label = b.textContent;
+      b.setAttribute('disabled','1'); b.textContent = 'מעבד…';
+      try {
+        var r = await fetch('/api/checkout', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(item) });
+        var d = await r.json();
+        if (d && d.url) { window.location.href = d.url; return; }
+        alert('שגיאה ביצירת התשלום. נסו שוב בעוד רגע.');
+      } catch (err) {
+        alert('החנות עדיין לא פרוסה לאוויר. אחרי העלאה ל-Vercel עם מפתחות PayPlus, הכפתור יוביל לתשלום אמיתי.');
+      }
+      b.removeAttribute('disabled'); b.textContent = label;
+    });
+  });
+</script>
+</body>
+</html>
