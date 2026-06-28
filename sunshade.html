@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>צל חוף UPF50+ עם מוטות · Sway</title>
+<meta name="description" content="צל חוף נמתח של Sway עם מוטות — הגנת UPF50+, עמיד ברוח, נפתח בדקה ומתקפל לתיק. ל-3-4 אנשים. במבצע ₪299." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="store.css">
+</head>
+<body>
+
+<header class="nav">
+  <a href="index.html" class="logo">Sway</a>
+  <nav class="links"><a href="index.html">הערסל</a><a href="shop.html" class="cta">החנות</a></nav>
+</header>
+
+<section class="wrap">
+  <div class="pdp">
+    <div>
+      <div class="media"><img id="mainimg" src="assets/products/shade/shade_blue.png" alt="צל חוף כחול נמתח של Sway עם מוטות, משפחה יושבת מתחתיו על החוף"></div>
+      <div style="text-align:center;color:var(--ink-soft);font-size:.9rem;margin-top:10px">התמונה: דגם כחול · קיים גם בירוק ובאדום</div>
+    </div>
+    <div>
+      <div class="crumbs"><a href="shop.html">החנות</a> / צל חוף</div>
+      <h1>צל חוף UPF50+ עם מוטות</h1>
+      <div class="stars">★★★★★ <small>4.4 · מאות מכירות · רב-מכר</small></div>
+      <div class="pricerow"><span class="now">₪299</span><span class="was">₪499</span></div>
+      <div class="save">מבצע השקה · חיסכון ₪200</div>
+      <p class="lead">צל חוף נמתח שנפתח בדקה: נועצים את המוטות בחול, מותחים את הבד, ויש לכם פינת צל גדולה שמחזיקה גם ברוח. הגנת UPF50+, ל-3-4 אנשים, ומתקפל לתיק נשיאה קטן.</p>
+
+      <div class="opts" id="colorPick">
+        <button type="button" class="swatch sel" data-color="blue"><span class="dot" style="background:#2f6fb0"></span> כחול</button>
+        <button type="button" class="swatch" data-color="green"><span class="dot" style="background:#3a7d44"></span> ירוק</button>
+        <button type="button" class="swatch" data-color="red"><span class="dot" style="background:#c0392b"></span> אדום</button>
+      </div>
+      <div class="qtyrow">כמות:
+        <button type="button" class="qbtn" data-q="-1">−</button>
+        <span id="qty">1</span>
+        <button type="button" class="qbtn" data-q="1">+</button>
+      </div>
+
+      <a href="#" class="btn big" data-buy data-product="shade">קנו עכשיו · ₪299 ›</a>
+      <div class="pay">תשלום מאובטח · אשראי / ביט / Apple Pay</div>
+      <div class="trust">
+        <span><span class="d"></span> משלוח חינם למרכז</span>
+        <span><span class="d"></span> 30 יום אחריות החזרה</span>
+      </div>
+
+      <ul class="feat">
+        <li><b>הגנה</b><span>UPF50+ מפני קרינת השמש</span></li>
+        <li><b>עמיד ברוח</b><span>מוטות ברזל ועיגון לחול</span></li>
+        <li><b>מידה פתוחה</b><span>200×160×150 ס״מ · ל-3-4 אנשים</span></li>
+        <li><b>הקמה</b><span>בדקה, בלי כלים</span></li>
+        <li><b>מתקפל לתיק</b><span>קומפקטי, עם רצועת נשיאה</span></li>
+        <li><b>צבעים</b><span>כחול / ירוק / אדום</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div><div class="logo">Sway</div><div style="margin-top:8px;color:#9fb0ad">הרוגע שהולך איתך.</div></div>
+    <div style="text-align:start">
+      <div><a href="shipping.html">משלוחים</a> · <a href="returns.html">החזרות</a> · <a href="terms.html">תקנון</a></div>
+      <div style="margin-top:8px">צרו קשר: <a href="https://wa.me/972000000000">וואטסאפ</a></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  var item = { product: 'shade', color: 'blue', qty: 1 };
+  var picker = document.getElementById('colorPick');
+  if (picker) picker.querySelectorAll('.swatch').forEach(function(b){
+    b.addEventListener('click', function(){
+      item.color = b.dataset.color;
+      picker.querySelectorAll('.swatch').forEach(function(x){ x.classList.remove('sel'); });
+      b.classList.add('sel');
+    });
+  });
+  var qEl = document.getElementById('qty');
+  document.querySelectorAll('.qbtn').forEach(function(b){
+    b.addEventListener('click', function(){
+      item.qty = Math.min(10, Math.max(1, item.qty + parseInt(b.dataset.q, 10)));
+      if (qEl) qEl.textContent = item.qty;
+    });
+  });
+  document.querySelectorAll('[data-buy]').forEach(function(b){
+    b.addEventListener('click', async function(e){
+      e.preventDefault();
+      var label = b.textContent;
+      b.setAttribute('disabled','1'); b.textContent = 'מעבד…';
+      try {
+        var r = await fetch('/api/checkout', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(item) });
+        var d = await r.json();
+        if (d && d.url) { window.location.href = d.url; return; }
+        alert('שגיאה ביצירת התשלום. נסו שוב בעוד רגע.');
+      } catch (err) {
+        alert('החנות עדיין לא פרוסה לאוויר. אחרי חיבור התשלום, הכפתור יוביל לתשלום אמיתי.');
+      }
+      b.removeAttribute('disabled'); b.textContent = label;
+    });
+  });
+</script>
+</body>
+</html>

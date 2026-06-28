@@ -505,7 +505,8 @@
   var onScroll = function(){ nav.classList.toggle('solid', window.scrollY > 40); };
   onScroll(); window.addEventListener('scroll', onScroll, { passive:true });
 
-  // ---- Sway store — real checkout via PayPlus (serverless /api/checkout) ----
+  // ---- Sway store — real checkout via Supabase Edge Function -> Green Invoice ----
+  var CHECKOUT_URL = 'https://fawifuxyaltvkfkmsuko.supabase.co/functions/v1/checkout';
   var sway = { color: 'blue', qty: 1 };
   var picker = document.getElementById('colorPick');
   if (picker) picker.querySelectorAll('.swatch').forEach(function(b){
@@ -518,7 +519,7 @@
   var qEl = document.getElementById('qty');
   document.querySelectorAll('.qbtn').forEach(function(b){
     b.addEventListener('click', function(){
-      sway.qty = Math.min(10, Math.max(1, sway.qty + parseInt(b.dataset.q, 10)));
+      sway.qty = Math.min(50, Math.max(1, sway.qty + parseInt(b.dataset.q, 10)));
       if (qEl) qEl.textContent = sway.qty;
     });
   });
@@ -528,7 +529,7 @@
       var label = b.textContent;
       b.setAttribute('disabled', '1'); b.textContent = 'מעבד…';
       try {
-        var r = await fetch('/api/checkout', {
+        var r = await fetch(CHECKOUT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ color: sway.color, qty: sway.qty })
@@ -537,7 +538,7 @@
         if (d && d.url) { window.location.href = d.url; return; }
         alert('שגיאה ביצירת התשלום. נסו שוב בעוד רגע.');
       } catch (err) {
-        alert('החנות עדיין לא פרוסה לאוויר. אחרי העלאה ל-Vercel עם מפתחות PayPlus, הכפתור יוביל לתשלום אמיתי.');
+        alert('שגיאת רשת. נסו שוב בעוד רגע.');
       }
       b.removeAttribute('disabled'); b.textContent = label;
     });
