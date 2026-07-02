@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>מגבת מיקרופייבר ענקית · Sway</title>
-<meta name="description" content="מגבת מיקרופייבר גדולה של Sway — קלה, מתייבשת מהר, דוחה חול ונכנסת לכל תיק. במבצע ₪59." />
+<meta name="description" content="מגבת מיקרופייבר גדולה של Sway - קלה, מתייבשת מהר, דוחה חול ונכנסת לכל תיק. במבצע ₪59." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@700;800;900&display=swap" rel="stylesheet">
@@ -30,7 +30,6 @@
 
       <div class="opts" id="colorPick">
         <button type="button" class="swatch sel" data-color="teal" data-img="assets/products/towel/towel_teal.png"><span class="dot blue"></span> תכלת</button>
-        <button type="button" class="swatch" data-color="sand" data-img="assets/products/towel/towel_sand.png"><span class="dot cream"></span> חול</button>
       </div>
       <div class="qtyrow">כמות:
         <button type="button" class="qbtn" data-q="-1">−</button>
@@ -47,7 +46,7 @@
 
       <ul class="feat">
         <li><b>חומר</b><span>מיקרופייבר רך וסופג</span></li>
-        <li><b>ייבוש</b><span>מהיר — מוכנה לתיק תוך דקות</span></li>
+        <li><b>ייבוש</b><span>מהיר - מוכנה לתיק תוך דקות</span></li>
         <li><b>דוחה חול</b><span>מנערים והחול יורד</span></li>
         <li><b>מידה</b><span>גדולה · 80×160 ס״מ</span></li>
         <li><b>קומפקטית</b><span>מתקפלת לכיס קטן עם רצועה</span></li>
@@ -68,7 +67,7 @@
 </footer>
 
 <script>
-  var item = { product: 'towel', color: 'teal', qty: 1 };
+  var item = { product: 'beach-towel', color: 'teal', qty: 1 };
   var picker = document.getElementById('colorPick');
   if (picker) picker.querySelectorAll('.swatch').forEach(function(b){
     b.addEventListener('click', function(){
@@ -87,20 +86,9 @@
     });
   });
   document.querySelectorAll('[data-buy]').forEach(function(b){
-    b.addEventListener('click', async function(e){
+    b.addEventListener('click', function(e){
       e.preventDefault();
-      var label = b.textContent;
-      b.setAttribute('disabled','1'); b.textContent = 'מעבד…';
-      try {
-        var r = await fetch('/api/checkout', { method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(item) });
-        var d = await r.json();
-        if (d && d.url) { window.location.href = d.url; return; }
-        alert('שגיאה ביצירת התשלום. נסו שוב בעוד רגע.');
-      } catch (err) {
-        alert('החנות עדיין לא פרוסה לאוויר. אחרי העלאה ל-Vercel עם מפתחות PayPlus, הכפתור יוביל לתשלום אמיתי.');
-      }
-      b.removeAttribute('disabled'); b.textContent = label;
+      window.location.href = 'checkout.html?product=' + item.product + '&color=' + item.color + '&qty=' + item.qty;
     });
   });
 </script>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sway - השלמת הזמנה</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@700;900&family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:#1d6f66; --teal-d:#11514a; --coral:#ec5b3b; --coral-d:#d24a2d;
+    --sand:#f5f1ea; --ink:#16211f; --ink-soft:#43524e; --line:#e4ded3;
+    --r:18px; --shadow:0 10px 34px rgba(22,33,31,.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Assistant',system-ui,Arial,sans-serif;color:var(--ink);background:var(--sand);min-height:100vh}
+  a{color:inherit;text-decoration:none}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;max-width:640px;margin:0 auto}
+  .logo{font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:1.5rem;color:var(--teal-d)}
+  .back{font-weight:700;color:var(--ink-soft);font-size:.95rem}
+  .back:hover{color:var(--coral)}
+  .card{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);max-width:640px;margin:6px auto 48px;padding:clamp(22px,4vw,38px)}
+  h1{font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:clamp(1.6rem,4vw,2.1rem);color:var(--teal-d)}
+  .sub{color:var(--ink-soft);margin:8px 0 24px;line-height:1.55}
+  .summary{display:flex;align-items:center;justify-content:space-between;background:var(--sand);border-radius:12px;padding:14px 16px;margin-bottom:22px;font-weight:700}
+  .summary .tot{font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:1.4rem;color:var(--teal-d)}
+  label{display:block;font-weight:700;margin:16px 0 6px;font-size:.98rem}
+  input[type=text],input[type=tel]{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;
+    font:inherit;font-size:1rem;background:#fff;transition:border-color .2s}
+  input:focus{outline:none;border-color:var(--teal)}
+  input.err{border-color:var(--coral-d)}
+  .hint{font-size:.86rem;color:var(--ink-soft);margin-top:5px}
+  .errmsg{display:none;color:var(--coral-d);font-weight:700;font-size:.9rem;margin-top:5px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:480px){.row2{grid-template-columns:1fr}}
+  .swatches{display:flex;gap:10px}
+  .swatch{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--line);background:#fff;border-radius:999px;
+    padding:9px 18px;font:inherit;font-weight:700;cursor:pointer}
+  .swatch .dot{width:15px;height:15px;border-radius:50%}
+  .swatch.sel{border-color:var(--teal);box-shadow:0 0 0 1.5px var(--teal)}
+  .stepper{display:inline-flex;align-items:center;gap:16px;border:1.5px solid var(--line);border-radius:999px;padding:6px 14px}
+  .stepper button{width:34px;height:34px;border-radius:50%;border:none;background:var(--sand);font-size:1.25rem;font-weight:800;cursor:pointer;color:var(--teal-d)}
+  .stepper span{font-weight:800;font-size:1.1rem;min-width:1.4ch;text-align:center}
+  .group-box{border:1.5px solid var(--line);border-radius:14px;padding:16px;margin-top:22px;background:#fcfaf6}
+  .group-head{display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+  .group-head input{width:20px;height:20px;margin-top:3px;accent-color:var(--teal)}
+  .group-head b{font-size:1.05rem}
+  .group-head .gsub{color:var(--ink-soft);font-size:.92rem;margin-top:2px;line-height:1.5}
+  .group-fields{display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+  .group-box.on .group-fields{display:block}
+  .split-line{background:#e7f1ee;border-radius:10px;padding:12px 14px;font-weight:700;color:var(--teal-d);margin-top:12px}
+  .split-line small{display:block;font-weight:600;color:var(--ink-soft);margin-top:3px}
+  .btn{display:flex;width:100%;justify-content:center;align-items:center;gap:.5rem;background:var(--coral);color:#fff;
+    font:inherit;font-weight:800;font-size:1.1rem;border:none;border-radius:999px;padding:16px 20px;cursor:pointer;
+    margin-top:26px;transition:background .2s}
+  .btn:hover{background:var(--coral-d)}
+  .btn[disabled]{opacity:.6;cursor:default}
+  .btn.teal{background:var(--teal)}.btn.teal:hover{background:var(--teal-d)}
+  .btn.wa{background:#1fae54}.btn.wa:hover{background:#188f45}
+  .formfoot{text-align:center;color:var(--ink-soft);font-size:.88rem;margin-top:14px}
+  /* ---- pay panel ---- */
+  #payPanel{display:none}
+  .orderno{background:var(--teal-d);color:#fff;border-radius:14px;padding:18px;text-align:center;margin:18px 0 24px}
+  .orderno .n{font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:2rem;letter-spacing:.03em}
+  .orderno .t{color:#9fe6d9;font-weight:700;font-size:.95rem;margin-bottom:2px}
+  .payopt{border:1.5px solid var(--line);border-radius:14px;padding:18px;margin-top:14px}
+  .payopt h3{font-family:'Frank Ruhl Libre',serif;color:var(--teal-d);font-size:1.15rem;margin-bottom:6px}
+  .payopt p{color:var(--ink-soft);font-size:.95rem;line-height:1.6}
+  .payopt .amt{font-weight:800;color:var(--ink)}
+  .refline{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--sand);
+    border-radius:10px;padding:10px 14px;margin-top:10px;font-weight:800}
+  .refline button{border:none;background:var(--teal);color:#fff;border-radius:8px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer;flex-shrink:0}
+  .note{background:#fdeee9;border-radius:12px;padding:14px 16px;color:var(--ink-soft);font-size:.93rem;line-height:1.6;margin-top:22px}
+  .note b{color:var(--coral-d)}
+  textarea.share{width:100%;min-height:170px;border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;
+    font:inherit;font-size:.95rem;line-height:1.6;background:#fcfaf6;resize:vertical;margin-top:10px}
+  .mini-actions{display:flex;gap:10px;margin-top:10px}
+  .mini-actions .btn{margin-top:0;font-size:1rem;padding:13px 16px}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <a class="logo" href="index.html">Sway</a>
+  <a class="back" href="index.html#offer">‹ חזרה לחנות</a>
+</div>
+
+<div class="card">
+
+  <!-- ========== STEP 1: ORDER FORM ========== -->
+  <div id="formPanel">
+    <h1>השלמת הזמנה</h1>
+    <p class="sub">עוד רגע ההזמנה בדרך אליכם. מלאו פרטים קצרים, ובעמוד הבא תבחרו איך לשלם.</p>
+
+    <div class="summary">
+      <span id="sumTxt">ערסל Sway × 1</span>
+      <span class="tot" id="sumTot">₪450</span>
+    </div>
+
+    <label id="colorLabel">צבע</label>
+    <div class="swatches" id="colorPick"></div>
+
+    <label>כמות</label>
+    <div class="stepper">
+      <button type="button" data-q="-1">−</button>
+      <span id="qtyEl">1</span>
+      <button type="button" data-q="1">+</button>
+    </div>
+
+    <div class="row2">
+      <div>
+        <label for="fName">שם מלא</label>
+        <input type="text" id="fName" autocomplete="name" placeholder="ישראל ישראלי">
+        <div class="errmsg" id="eName">כתבו שם מלא</div>
+      </div>
+      <div>
+        <label for="fPhone">טלפון נייד</label>
+        <input type="tel" id="fPhone" autocomplete="tel" inputmode="tel" placeholder="050-0000000" dir="ltr" style="text-align:right">
+        <div class="errmsg" id="ePhone">מספר נייד ישראלי, 10 ספרות</div>
+      </div>
+    </div>
+
+    <label for="fAddr">כתובת למשלוח</label>
+    <input type="text" id="fAddr" autocomplete="street-address" placeholder="רחוב, מספר בית, עיר">
+    <div class="errmsg" id="eAddr">כתבו רחוב, מספר ועיר</div>
+    <div class="hint">משלוח חינם למרכז. לצפון ולדרום נתאם תוספת בוואטסאפ.</div>
+
+    <!-- group buy -->
+    <div class="group-box" id="groupBox">
+      <label class="group-head" style="margin:0">
+        <input type="checkbox" id="fGroup">
+        <span>
+          <b>קנייה חברית</b>
+          <span class="gsub">קונים כמה פריטים יחד עם חברים? סמנו כאן, והתשלום מתחלק בין כולם. כל אחד משלם את החלק שלו ישירות.</span>
+        </span>
+      </label>
+      <div class="group-fields">
+        <label for="fFriends" style="margin-top:0">כמה משתתפים בקנייה? (כולל אתכם)</label>
+        <div class="stepper">
+          <button type="button" data-g="-1">−</button>
+          <span id="friendsEl">4</span>
+          <button type="button" data-g="1">+</button>
+        </div>
+        <div class="split-line" id="splitLine"></div>
+        <div class="errmsg" id="eGroup">החלק לאדם קטן מדי (מינימום ₪20). הקטינו את מספר המשתתפים.</div>
+      </div>
+    </div>
+
+    <button class="btn" id="submitBtn">המשך לתשלום ›</button>
+    <div class="formfoot">בלי כרטיס אשראי באתר. משלמים בביט או ב-PayBox, בטלפון שלכם.</div>
+  </div>
+
+  <!-- ========== STEP 2: PAYMENT INSTRUCTIONS ========== -->
+  <div id="payPanel">
+    <h1>ההזמנה נקלטה!</h1>
+    <p class="sub" id="payIntro"></p>
+
+    <div class="orderno">
+      <div class="t">מספר הזמנה</div>
+      <div class="n" id="orderNoEl"></div>
+    </div>
+
+    <div class="payopt" id="payboxOpt">
+      <h3>PayBox</h3>
+      <p>לוחצים, משלמים את הסכום, וכותבים בהערת התשלום את מספר ההזמנה. עובד גם בלי האפליקציה.</p>
+      <div class="refline"><span id="payboxRef"></span><button type="button" data-copy="#payboxRef">העתקה</button></div>
+      <a class="btn teal" id="payboxBtn" target="_blank" rel="noopener">לתשלום ב-PayBox ›</a>
+      <p class="hint hidden" id="cardCapNote">שימו לב: PayBox מגביל תשלום בכרטיס חיצוני ל-1,000 ש"ח בחודש למשלם. מעל זה - עדיף ביט או תשלום מתוך אפליקציית PayBox.</p>
+    </div>
+
+    <div class="payopt" id="bitOpt">
+      <h3>ביט</h3>
+      <p>שולחים ביט למספר <b class="amt" id="bitPhoneEl" dir="ltr"></b> על סך <b class="amt" id="bitAmtEl"></b>, וכותבים בתיאור את מספר ההזמנה.</p>
+      <div class="refline"><span id="bitRef"></span><button type="button" data-copy="#bitRef">העתקה</button></div>
+    </div>
+
+    <!-- group share block -->
+    <div class="payopt hidden" id="groupShare">
+      <h3>שתפו את החברים</h3>
+      <p id="groupSplitTxt"></p>
+      <p>הכנו לכם הודעה מוכנה לקבוצת הוואטסאפ:</p>
+      <textarea class="share" id="shareMsg" readonly></textarea>
+      <div class="mini-actions">
+        <a class="btn wa" id="shareWa" target="_blank" rel="noopener">שיתוף בוואטסאפ ›</a>
+        <button class="btn teal" type="button" data-copy="#shareMsg">העתקת ההודעה</button>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>איך זה עובד?</b> אנחנו מאשרים כל תשלום אישית. אחרי ששלחתם, לחצו על הכפתור למטה,
+      ונחזור אליכם בוואטסאפ עם אישור. המשלוח יוצא מיד אחרי אישור התשלום.
+    </div>
+
+    <a class="btn wa" id="confirmWa" target="_blank" rel="noopener">שילמתי, אשרו לי בוואטסאפ ›</a>
+  </div>
+
+</div>
+
+<script>
+  // ================= CONFIG - owner fills these 3 values =================
+  var CFG = {
+    PAYBOX_LINK: '',            // permanent PayBox group link ("Sway - תשלומים", free amount, pay-without-app enabled)
+    BIT_PHONE:   '',            // owner's bit number, e.g. '050-0000000'
+    WHATSAPP:    '972000000000' // owner WhatsApp for confirmations, international format
+  };
+  var SUPABASE_URL = 'https://fawifuxyaltvkfkmsuko.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_fJMqMfcKPaJlxurR6xFohA_2E6NdZpA';
+  var MIN_SHARE = 20;
+  // UI catalog: [color key, Hebrew name, dot color]. The server (create_order) is the price authority.
+  var CATALOG = {
+    'sway-hammock': { name: 'ערסל Sway',          price: 450, colors: [['blue','כחול','#3a6ea5'],['brown','חום','#a9824f']] },
+    'beach-chair':  { name: "לאונג'ר חוף מתקפל",   price: 199, colors: [['cream','קרם','#e9dfc8'],['green','ירוק','#3a7d44'],['black','שחור','#1f2422']] },
+    'beach-towel':  { name: 'מגבת חוף מיקרופייבר', price: 59,  colors: [['teal','תכלת','#2fa3a0']] },
+    'sun-shade':    { name: 'צל חוף UPF50+',       price: 299, colors: [['blue','כחול','#2f6fb0'],['green','ירוק','#3a7d44'],['red','אדום','#c0392b']] }
+  };
+
+  // ---------- state ----------
+  var qs = new URLSearchParams(location.search);
+  var PRODUCT = CATALOG[qs.get('product')] ? qs.get('product') : 'sway-hammock';
+  var P = CATALOG[PRODUCT];
+  function colorName(key){
+    for (var i = 0; i < P.colors.length; i++) if (P.colors[i][0] === key) return P.colors[i][1];
+    return null;
+  }
+  var st = {
+    color: colorName(qs.get('color')) ? qs.get('color') : P.colors[0][0],
+    qty: Math.min(10, Math.max(1, parseInt(qs.get('qty'), 10) || 1)),
+    group: false, friends: 4
+  };
+
+  // build swatches from the catalog; single-color product hides the row
+  var pick = document.getElementById('colorPick');
+  P.colors.forEach(function(c){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'swatch'; b.dataset.color = c[0];
+    b.innerHTML = '<span class="dot" style="background:' + c[2] + '"></span> ' + c[1];
+    pick.appendChild(b);
+  });
+  if (P.colors.length < 2) {
+    document.getElementById('colorLabel').style.display = 'none';
+    pick.style.display = 'none';
+  }
+  if (PRODUCT !== 'sway-hammock') document.querySelector('.back').href = 'shop.html';
+
+  function shekel(n){ return '₪' + n.toLocaleString('he-IL'); }
+  function total(){ return st.qty * P.price; }
+  function friendShare(){ return Math.floor(total() / st.friends); }
+  function organizerShare(){ return total() - friendShare() * (st.friends - 1); }
+  function itemTxt(n){ return n === 1 ? P.name : n + ' × ' + P.name; }
+
+  function render(){
+    document.getElementById('sumTxt').textContent = P.name + ' (' + colorName(st.color) + ') × ' + st.qty;
+    document.getElementById('sumTot').textContent = shekel(total());
+    document.getElementById('qtyEl').textContent = st.qty;
+    document.getElementById('friendsEl').textContent = st.friends;
+    document.querySelectorAll('#colorPick .swatch').forEach(function(b){
+      b.classList.toggle('sel', b.dataset.color === st.color);
+    });
+    var ok = friendShare() >= MIN_SHARE;
+    var sl = document.getElementById('splitLine');
+    if (st.friends >= 2){
+      sl.innerHTML = 'כל אחד משלם <b>' + shekel(friendShare()) + '</b>' +
+        (organizerShare() !== friendShare()
+          ? '<small>אתם, כמארגנים, משלימים ' + shekel(organizerShare()) + ' (העודף מהעיגול)</small>' : '');
+    }
+    document.getElementById('eGroup').style.display = (st.group && !ok) ? 'block' : 'none';
+  }
+
+  document.querySelectorAll('#colorPick .swatch').forEach(function(b){
+    b.addEventListener('click', function(){ st.color = b.dataset.color; render(); });
+  });
+  document.querySelectorAll('[data-q]').forEach(function(b){
+    b.addEventListener('click', function(){ st.qty = Math.min(10, Math.max(1, st.qty + (+b.dataset.q))); render(); });
+  });
+  document.querySelectorAll('[data-g]').forEach(function(b){
+    b.addEventListener('click', function(){ st.friends = Math.min(30, Math.max(2, st.friends + (+b.dataset.g))); render(); });
+  });
+  document.getElementById('fGroup').addEventListener('change', function(){
+    st.group = this.checked;
+    document.getElementById('groupBox').classList.toggle('on', st.group);
+    render();
+  });
+  // ?group=1 (from the scroll page's group-buy link) opens group buy pre-checked
+  if (qs.get('group') === '1') {
+    st.group = true;
+    document.getElementById('fGroup').checked = true;
+    document.getElementById('groupBox').classList.add('on');
+  }
+  render();
+
+  // ---------- validation ----------
+  function cleanPhone(v){ return (v || '').replace(/\D/g, ''); }
+  function validate(){
+    var okAll = true;
+    function mark(id, eid, ok){
+      document.getElementById(id).classList.toggle('err', !ok);
+      document.getElementById(eid).style.display = ok ? 'none' : 'block';
+      if (!ok) okAll = false;
+    }
+    mark('fName', 'eName', document.getElementById('fName').value.trim().length >= 2);
+    mark('fPhone', 'ePhone', /^05\d{8}$/.test(cleanPhone(document.getElementById('fPhone').value)));
+    mark('fAddr', 'eAddr', document.getElementById('fAddr').value.trim().length >= 5);
+    if (st.group && friendShare() < MIN_SHARE) okAll = false;
+    render();
+    return okAll;
+  }
+
+  // ---------- submit ----------
+  document.getElementById('submitBtn').addEventListener('click', async function(){
+    if (!validate()) return;
+    var btn = this; btn.setAttribute('disabled', '1'); btn.textContent = 'שולח…';
+    try {
+      var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/create_order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        body: JSON.stringify({
+          p_product: PRODUCT,
+          p_color: st.color, p_qty: st.qty,
+          p_name: document.getElementById('fName').value.trim(),
+          p_phone: cleanPhone(document.getElementById('fPhone').value),
+          p_address: document.getElementById('fAddr').value.trim(),
+          p_is_group: st.group,
+          p_group_size: st.group ? st.friends : null
+        })
+      });
+      var d = await r.json();
+      if (r.ok && d && d.order_no) { showPay(d); return; }
+      alert('משהו השתבש בקליטת ההזמנה. נסו שוב בעוד רגע.');
+    } catch (e) {
+      alert('שגיאת רשת. בדקו את החיבור ונסו שוב.');
+    }
+    btn.removeAttribute('disabled'); btn.textContent = 'המשך לתשלום ›';
+  });
+
+  // ---------- payment panel ----------
+  function showPay(d){
+    var ref = 'Sway ' + d.order_no;
+    var payAmt = st.group ? d.per_share : d.amount; // group: each pays own share
+
+    document.getElementById('formPanel').style.display = 'none';
+    document.getElementById('payPanel').style.display = 'block';
+    window.scrollTo(0, 0);
+
+    document.getElementById('orderNoEl').textContent = d.order_no;
+    document.getElementById('payIntro').textContent = st.group
+      ? 'סה"כ ' + shekel(d.amount) + ' על ' + itemTxt(st.qty) + '. כל משתתף משלם את החלק שלו, לפי ההוראות כאן.'
+      : 'נשאר רק לשלם ' + shekel(d.amount) + '. בחרו את הדרך הנוחה לכם:';
+
+    // PayBox
+    if (CFG.PAYBOX_LINK) {
+      document.getElementById('payboxBtn').href = CFG.PAYBOX_LINK;
+      document.getElementById('payboxRef').textContent = ref + ' · ' + shekel(payAmt);
+      document.getElementById('cardCapNote').classList.toggle('hidden', payAmt <= 1000);
+    } else {
+      document.getElementById('payboxOpt').classList.add('hidden');
+    }
+    // Bit
+    if (CFG.BIT_PHONE) {
+      document.getElementById('bitPhoneEl').textContent = CFG.BIT_PHONE;
+      document.getElementById('bitAmtEl').textContent = shekel(payAmt);
+      document.getElementById('bitRef').textContent = ref + ' · ' + shekel(payAmt);
+    } else {
+      document.getElementById('bitOpt').classList.add('hidden');
+    }
+
+    // group share message
+    if (st.group) {
+      document.getElementById('groupShare').classList.remove('hidden');
+      document.getElementById('groupSplitTxt').textContent =
+        'המחיר מתחלק בין ' + st.friends + ' משתתפים: כל אחד ' + shekel(d.per_share) +
+        (d.organizer_share !== d.per_share ? ', ואתם משלימים ' + shekel(d.organizer_share) + '.' : '.');
+      var lines = [
+        'היי חברים! אנחנו קונים ' + itemTxt(st.qty) + ' ביחד.',
+        'סה"כ ' + d.amount + ' ש"ח, מתחלק בין ' + st.friends + ' משתתפים.',
+        'כל אחד משלם ' + d.per_share + ' ש"ח.'
+      ];
+      if (CFG.PAYBOX_LINK) lines.push('משלמים כאן: ' + CFG.PAYBOX_LINK);
+      if (CFG.BIT_PHONE) lines.push('או בביט למספר ' + CFG.BIT_PHONE + '.');
+      lines.push('חשוב: בהערת התשלום כתבו ' + ref);
+      var msg = lines.join('\n');
+      document.getElementById('shareMsg').value = msg;
+      document.getElementById('shareWa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+    }
+
+    // fallback: payment channels not configured yet - promise WhatsApp follow-up
+    if (!CFG.PAYBOX_LINK && !CFG.BIT_PHONE) {
+      document.getElementById('payIntro').textContent =
+        'קיבלנו את ההזמנה. נשלח לכם עכשיו בוואטסאפ את פרטי התשלום. לחצו למטה כדי לפתוח את השיחה:';
+      document.getElementById('confirmWa').textContent = 'המשך בוואטסאפ ›';
+    }
+
+    // WhatsApp confirm
+    document.getElementById('confirmWa').href = 'https://wa.me/' + CFG.WHATSAPP +
+      '?text=' + encodeURIComponent('היי, שילמתי על הזמנה ' + ref);
+  }
+
+  // ---------- copy buttons ----------
+  document.querySelectorAll('[data-copy]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var el = document.querySelector(b.dataset.copy);
+      var txt = el.value !== undefined ? el.value : el.textContent;
+      navigator.clipboard.writeText(txt).then(function(){
+        var t = b.textContent; b.textContent = 'הועתק ✓';
+        setTimeout(function(){ b.textContent = t; }, 1500);
+      });
+    });
+  });
+</script>
+</body>
+</html>

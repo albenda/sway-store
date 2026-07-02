@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>לאונג'ר חוף מתקפל · Sway</title>
-<meta name="description" content="לאונג'ר חוף נמוך ומתקפל של Sway — משענת מתכווננת, שלד אלומיניום קל, מתקפל לתיק נשיאה. במבצע ₪199." />
+<meta name="description" content="לאונג'ר חוף נמוך ומתקפל של Sway - משענת מתכווננת, שלד אלומיניום קל, מתקפל לתיק נשיאה. במבצע ₪199." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@700;800;900&display=swap" rel="stylesheet">
@@ -69,7 +69,7 @@
 </footer>
 
 <script>
-  var item = { product: 'chair', color: 'cream', qty: 1 };
+  var item = { product: 'beach-chair', color: 'cream', qty: 1 };
   var picker = document.getElementById('colorPick');
   if (picker) picker.querySelectorAll('.swatch').forEach(function(b){
     b.addEventListener('click', function(){
@@ -88,20 +88,9 @@
     });
   });
   document.querySelectorAll('[data-buy]').forEach(function(b){
-    b.addEventListener('click', async function(e){
+    b.addEventListener('click', function(e){
       e.preventDefault();
-      var label = b.textContent;
-      b.setAttribute('disabled','1'); b.textContent = 'מעבד…';
-      try {
-        var r = await fetch('/api/checkout', { method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(item) });
-        var d = await r.json();
-        if (d && d.url) { window.location.href = d.url; return; }
-        alert('שגיאה ביצירת התשלום. נסו שוב בעוד רגע.');
-      } catch (err) {
-        alert('החנות עדיין לא פרוסה לאוויר. אחרי העלאה ל-Vercel עם מפתחות PayPlus, הכפתור יוביל לתשלום אמיתי.');
-      }
-      b.removeAttribute('disabled'); b.textContent = label;
+      window.location.href = 'checkout.html?product=' + item.product + '&color=' + item.color + '&qty=' + item.qty;
     });
   });
 </script>

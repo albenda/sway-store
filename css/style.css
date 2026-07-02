@@ -1,0 +1,684 @@
+/* Sway scroll journey - BRAND.md palette only. Coral appears ONLY on the main CTA.
+   One ease everywhere: cubic-bezier(0.65,0.05,0,1). Durations 0.45/0.9/1.35s. */
+
+/* ---------- self-hosted subsetted fonts (no CDN, no FOUT) ---------- */
+@font-face {
+  font-family: 'Frank Ruhl Libre';
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+  src: url('../assets/fonts/FrankRuhlLibre-500-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: 'Frank Ruhl Libre';
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+  src: url('../assets/fonts/FrankRuhlLibre-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 400 600; /* variable slice: one file covers both weights */
+  font-display: block;
+  src: url('../assets/fonts/Assistant-var-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: block;
+  src: url('../assets/fonts/Assistant-var-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --teal: #1d6f66;
+  --teal-dark: #11514a;
+  --coral: #ec5b3b;
+  --coral-dark: #d24a2d;
+  --sand: #f5f1ea;
+  --ink: #16211f;
+  --ink-40: rgba(22, 33, 31, 0.4);
+  --sand-60: rgba(245, 241, 234, 0.6);
+  --ease-sway: cubic-bezier(0.65, 0.05, 0, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: auto; }
+
+body {
+  font-family: 'Assistant', sans-serif;
+  background: var(--ink); /* journey is the bulk of the page; no sand flashes mid-film */
+  color: var(--ink);
+  /* no letter-spacing on Hebrew, ever (kicker max 0.02em) */
+}
+
+h1, h2 {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+}
+
+/* ---------- shared type: kicker above EVERY headline ---------- */
+.kicker {
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--sand-60);
+}
+
+/* ---------- Sway wordmark: type + hammock-sag curve ---------- */
+.wordmark {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+  color: var(--sand);
+  text-decoration: none;
+  line-height: 1;
+}
+.wordmark__t { letter-spacing: 0.04em; /* Latin only - Hebrew stays flat */ }
+/* em-based: an SVG's default intrinsic 300px makes % widths balloon the lockup */
+.wordmark__curve { width: 2.9em; height: auto; opacity: 0.9; }
+
+.hero__text .wordmark { font-size: clamp(1.5rem, 2.6vw, 2.3rem); margin-bottom: 1.4em; }
+
+.brand-mark {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  inset-inline-start: 20px;
+  z-index: 50;
+  font-size: 1.15rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity 0.45s var(--ease-sway), transform 0.45s var(--ease-sway);
+}
+body.scrolled .brand-mark { opacity: 1; pointer-events: auto; transform: none; }
+body.at-outro .brand-mark { color: var(--ink); }
+html:not(.js) .brand-mark { opacity: 1; pointer-events: auto; transform: none; }
+
+/* ---------- word-split masks (JS wraps [data-split] words) ---------- */
+.w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  /* clip room for Hebrew descenders without shifting layout */
+  padding: 0.1em 0.02em 0.14em;
+  margin: -0.1em -0.02em -0.14em;
+}
+.wi { display: inline-block; will-change: transform, opacity; }
+
+/* ---------- loader ---------- */
+.loader {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--ink);
+  place-items: center;
+  place-content: center;
+  gap: 1.2rem;
+}
+html.js .loader { display: grid; }
+.loader__mark {
+  font-size: clamp(2.6rem, 8vw, 5rem);
+  clip-path: inset(0 0 100% 0);
+}
+.loader__count {
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 4ch;
+  text-align: center;
+  color: var(--sand-60);
+  opacity: 0; /* revealed only if the wait is real (>400ms) */
+}
+
+/* ---------- sticky mini-CTA ---------- */
+.mini-cta {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  inset-inline-end: 16px;
+  z-index: 50;
+  padding: 8px 16px;
+  border: 1.5px solid var(--teal);
+  border-radius: 999px;
+  color: var(--teal);
+  background: rgba(245, 241, 234, 0.85);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  unicode-bidi: plaintext;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity 0.45s var(--ease-sway), transform 0.45s var(--ease-sway);
+}
+body.scrolled .mini-cta {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+/* two CTAs on screen reads bargain-bin: hide the mini while the outro owns the sale */
+body.at-outro .mini-cta { opacity: 0; pointer-events: none; transform: translateY(-8px); }
+html:not(.js) .mini-cta { opacity: 1; pointer-events: auto; transform: none; }
+
+/* ---------- hero ---------- */
+.hero {
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--ink);
+}
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero__text {
+  position: relative;
+  text-align: center;
+  padding: 2.5rem 6vw 16svh;
+  color: var(--sand);
+  /* legibility comes from the grad-ND baked into the frames - no UI scrims */
+}
+.hero__text h1 {
+  font-size: clamp(3.6rem, 11vw, 9rem);
+  line-height: 1.05;
+}
+.hero__sub {
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  margin-top: 0.6em;
+}
+.hero__text .kicker { margin-bottom: 0.8em; }
+
+/* hairline scroll hint (replaces the bouncing arrow) */
+.scroll-hint {
+  position: absolute;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 0.9s var(--ease-sway);
+}
+.scroll-hint.on { opacity: 1; }
+.scroll-hint__line {
+  width: 1.5px;
+  height: 44px;
+  background: var(--sand);
+  animation: hint-line 2.4s var(--ease-sway) infinite;
+}
+@keyframes hint-line {
+  0%   { transform: scaleY(0); transform-origin: top; }
+  50%  { transform: scaleY(1); transform-origin: top; }
+  50.1%{ transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+/* ---------- journey (one canvas, one pin) ---------- */
+.journey { position: relative; }
+.journey__stage {
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+  background: var(--ink);
+}
+.journey__poster,
+.journey__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.journey__canvas {
+  opacity: 0; /* fades in on first successful draw; poster sits underneath */
+  touch-action: pan-y; /* drag-to-rotate engages only on horizontal intent */
+}
+
+/* film layers: over canvas, under text, zero pointer cost */
+.fx { position: absolute; inset: 0; pointer-events: none; }
+.fx--grain {
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+  opacity: 0.06;
+  animation: grain-shift 0.7s steps(1, end) infinite; /* real grain moves (~11fps) */
+}
+@keyframes grain-shift {
+  0%    { transform: translate(0, 0); }
+  12.5% { transform: translate(-2%, 3%); }
+  25%   { transform: translate(3%, -1%); }
+  37.5% { transform: translate(-1%, -3%); }
+  50%   { transform: translate(2%, 2%); }
+  62.5% { transform: translate(-3%, 1%); }
+  75%   { transform: translate(1%, -2%); }
+  87.5% { transform: translate(-2%, -1%); }
+  100%  { transform: translate(0, 0); }
+}
+@media (pointer: coarse) {
+  .fx--grain { animation: none; } /* mobile fps budget goes to the canvas */
+}
+.fx--vignette {
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(22, 33, 31, 0.45) 100%);
+}
+.fx--tint {
+  background-color: var(--teal);
+  mix-blend-mode: soft-light;
+  opacity: 0.12; /* color tweened per chapter on the master timeline */
+}
+
+/* chapter text: word-mask choreography on the master timeline */
+.chapter {
+  position: absolute;
+  top: 10svh;
+  right: 0;
+  left: 0;
+  text-align: center;
+  padding: 2.5rem 6vw 4rem;
+  color: var(--sand);
+  pointer-events: none;
+  /* legibility comes from the grad-ND baked into the frames - no UI scrims */
+}
+.chapter h2 {
+  font-size: clamp(2.8rem, 6vw, 5.5rem);
+  line-height: 1.1;
+  max-inline-size: 14ch;
+  margin-inline: auto;
+}
+.chapter .kicker { margin-bottom: 0.9em; }
+
+.settle-line {
+  position: absolute;
+  bottom: 16svh;
+  right: 0;
+  left: 0;
+  text-align: center;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  color: rgba(245, 241, 234, 0.85);
+  opacity: 0;
+  padding: 0 6vw;
+  pointer-events: none;
+}
+
+.drag-hint {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  right: 0;
+  left: 0;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.9s var(--ease-sway);
+  pointer-events: none;
+}
+.drag-hint.on { opacity: 1; }
+
+/* ---------- static fallback (no-JS / reduced-motion / posters tier) ---------- */
+.journey__static { display: none; background: var(--sand); }
+html:not(.js) .journey__stage,
+html.tier-posters .journey__stage { display: none; }
+html:not(.js) .journey__static,
+html.tier-posters .journey__static { display: block; }
+.journey__static img { width: 100%; height: 70svh; object-fit: cover; display: block; }
+.journey__static figcaption {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  text-align: center;
+  padding: 1.2em 6vw;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* pure-CSS safety net: same swap main.js does, holds even if JS fails */
+  .loader { display: none !important; }
+  .journey__stage { display: none; }
+  .journey__static { display: block; }
+  .scroll-hint__line, .fx--grain { animation: none; }
+}
+
+/* ---------- scrub-video fallback layer (tier 2) ---------- */
+.scrub-video {
+  display: none;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+html.tier-video .scrub-video { display: block; z-index: 1; pointer-events: none; }
+html.tier-video .journey__canvas,
+html.tier-video .journey__poster { visibility: hidden; }
+html.tier-video .chapter,
+html.tier-video .settle-line { z-index: 2; }
+html.tier-video .drag-hint { display: none; }
+
+/* ---------- outro ---------- */
+.outro {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  text-align: center;
+  background: var(--sand);
+  padding: 12svh 6vw;
+}
+.outro__brand { font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.1; }
+.outro__was {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: var(--ink-40);
+  unicode-bidi: plaintext;
+}
+.outro__price-mask { overflow: hidden; }
+.outro__price {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+  font-size: clamp(4rem, 12vw, 8rem); /* largest glyph on the page */
+  line-height: 1.05;
+  color: var(--ink);
+  unicode-bidi: plaintext; /* ₪450 never flips */
+}
+.outro__cta {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  background: var(--coral);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.2rem;
+  padding: 14px 44px;
+  border-radius: 999px;
+}
+.outro__cta:hover, .outro__cta:focus-visible { background: var(--coral-dark); }
+.outro__cta:active { scale: 0.97; }
+.outro__cta-t { grid-area: 1 / 1; transition: transform 0.45s var(--ease-sway); }
+/* 250% of the text row clears the 14px padding too - 110% leaked into the pill */
+.outro__cta-t--b { transform: translateY(250%); }
+@media (pointer: fine) {
+  .outro__cta:hover .outro__cta-t { transform: translateY(-250%); }
+  .outro__cta:hover .outro__cta-t--b { transform: translateY(0); }
+}
+.outro__group {
+  color: var(--teal);
+  font-size: 1rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ============ STORE (below the film) - same tokens, calm and generous ============ */
+.store {
+  background: var(--sand);
+  color: var(--ink);
+  line-height: 1.55;
+}
+.store-sec {
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: clamp(72px, 12vh, 128px) 6vw;
+}
+.store-sec--tight { padding-top: 0; }
+.store-sec--narrow { max-width: 840px; }
+
+/* kicker + headline pattern (kicker flips to teal on sand) */
+.store .kicker {
+  display: block;
+  color: var(--teal);
+  margin-bottom: 1em;
+}
+.store h2 {
+  font-size: clamp(2rem, 4.6vw, 3.2rem);
+  line-height: 1.12;
+  max-inline-size: 20ch;
+}
+.store-lead {
+  margin-top: 0.9em;
+  font-size: clamp(1rem, 1.5vw, 1.15rem);
+  color: rgba(22, 33, 31, 0.72);
+  max-width: 44ch;
+}
+.store a { color: inherit; }
+
+/* reveal-on-scroll: plain CSS transition, the sway ease, JS-off safe */
+html.js .srv {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.9s var(--ease-sway), transform 0.9s var(--ease-sway);
+}
+html.js .srv.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  html.js .srv { opacity: 1; transform: none; transition: none; }
+}
+
+/* benefits: hairline editorial columns, no cards */
+.benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(24px, 4vw, 56px);
+  margin-top: clamp(40px, 6vw, 72px);
+}
+.benefit { border-top: 1px solid rgba(22, 33, 31, 0.16); padding-top: 22px; }
+.benefit h3 {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+.benefit p {
+  margin-top: 0.5em;
+  color: rgba(22, 33, 31, 0.7);
+  font-size: 1rem;
+  max-width: 34ch;
+}
+
+/* color variants: two quiet photo cards, coral only on the buy pill */
+.variants {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(16px, 2.5vw, 28px);
+  margin-top: clamp(48px, 7vw, 88px);
+}
+.variant { display: block; text-decoration: none; }
+.variant__media {
+  display: block;
+  overflow: hidden;
+  border-radius: 6px;
+  aspect-ratio: 4 / 5;
+  background: var(--ink);
+}
+.variant__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1.35s var(--ease-sway);
+}
+@media (pointer: fine) {
+  .variant:hover .variant__media img { transform: scale(1.04); }
+}
+.variant__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.variant__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+  font-size: 1.25rem;
+}
+.variant__dot { width: 0.7em; height: 0.7em; border-radius: 50%; flex: 0 0 auto; }
+.variant__dot--blue { background: #3a6ea5; }
+.variant__dot--brown { background: #a9824f; }
+.buy-pill {
+  background: var(--coral);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 9px 20px;
+  border-radius: 999px;
+  white-space: nowrap;
+  unicode-bidi: plaintext;
+  transition: background 0.45s var(--ease-sway);
+}
+.variant:hover .buy-pill, .variant:focus-visible .buy-pill { background: var(--coral-dark); }
+
+/* specs: hairline definition rows */
+.specs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 clamp(32px, 5vw, 64px);
+  margin-top: clamp(40px, 6vw, 64px);
+}
+.specs-grid > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(22, 33, 31, 0.14);
+}
+.specs-grid dt { font-weight: 600; }
+.specs-grid dd { color: rgba(22, 33, 31, 0.7); text-align: start; }
+
+/* side products: image + name + price, links to catalog pages (teal, not coral) */
+.extras {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(16px, 2.5vw, 28px);
+  margin-top: clamp(40px, 6vw, 72px);
+}
+.extra { display: block; text-decoration: none; }
+.extra__media {
+  display: block;
+  overflow: hidden;
+  border-radius: 6px;
+  aspect-ratio: 4 / 5;
+  background: #ece7de; /* sand, one step deeper - product PNGs float on it */
+}
+.extra__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1.35s var(--ease-sway);
+}
+@media (pointer: fine) {
+  .extra:hover .extra__media img { transform: scale(1.04); }
+}
+.extra__name {
+  display: block;
+  margin-top: 14px;
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+  font-size: 1.1rem;
+  line-height: 1.25;
+}
+.extra__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 6px;
+}
+.extra__price { font-weight: 600; unicode-bidi: plaintext; }
+.extra__go {
+  color: var(--teal);
+  font-weight: 600;
+  font-size: 0.92rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* faq: quiet details rows */
+.faq { margin-top: clamp(32px, 5vw, 56px); }
+.faq details { border-bottom: 1px solid rgba(22, 33, 31, 0.14); }
+.faq summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+  font-size: 1.15rem;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  background: no-repeat center url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%231d6f66' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
+  transition: transform 0.45s var(--ease-sway);
+}
+.faq details[open] summary::after { transform: rotate(135deg); }
+.faq details p {
+  padding: 0 0 20px;
+  color: rgba(22, 33, 31, 0.72);
+  max-width: 62ch;
+}
+.faq details p a {
+  color: var(--teal);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* footer: back to ink, wordmark lockup, quiet links */
+.store-footer {
+  background: var(--ink);
+  color: var(--sand-60);
+  font-size: 0.94rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 28px;
+  padding: clamp(48px, 8vh, 72px) 6vw;
+}
+.store-footer__brand .wordmark { font-size: 1.4rem; }
+.store-footer__brand p { margin-top: 10px; }
+.store-footer__links nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.store-footer__links a {
+  color: var(--sand);
+  text-decoration: none;
+}
+.store-footer__links a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.store-footer__links p { margin-top: 12px; }
+.store-footer__pay { opacity: 0.7; }
+
+@media (max-width: 760px) {
+  .benefits, .variants, .extras, .specs-grid { grid-template-columns: 1fr; }
+  .benefits { gap: 28px; }
+  .variants .variant + .variant { margin-top: 8px; }
+  .store-footer { flex-direction: column; }
+}
