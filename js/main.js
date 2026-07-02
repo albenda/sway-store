@@ -54,7 +54,17 @@ let mixEase = (t) => t; // replaced with power1.inOut once gsap is up
 // mobile: paid-for native portrait 720x1280 x60. desktop: 1600x900 x80 under
 // seq/d1-3 (webp) with optional AVIF variants under d1a-3a probed at runtime.
 async function resolveSeries() {
-  if (isMobile) return { dirs: ['s1', 's2', 's3'], ext: 'webp', frames: 60 };
+  if (isMobile) {
+    // iOS 16+ decodes AVIF: probe the mobile avif twins, drop to webp silently
+    try {
+      const r = await fetch('assets/seq/s1a/f_001.avif');
+      if (r.ok) {
+        await createImageBitmap(await r.blob());
+        return { dirs: ['s1a', 's2a', 's3a'], ext: 'avif', frames: 60 };
+      }
+    } catch (e) { /* webp it is */ }
+    return { dirs: ['s1', 's2', 's3'], ext: 'webp', frames: 60 };
+  }
   try {
     const r = await fetch('assets/seq/d1a/f_001.avif');
     if (r.ok) {
