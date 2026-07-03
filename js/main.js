@@ -35,7 +35,9 @@ const V2 = {
 const BAG_STILLS = ['assets/still_bag_balcony.webp', 'assets/still_bag_beach.webp'];
 
 const M = isMobile ? 0.676 : 1; // one scale for every px value in the plan
-const SCRUB = isCoarse ? 0.35 : 0.7;
+// touch: scrub reports the EXACT finger target; smoothing happens in the render
+// layer (rAF lerp below) - one scrub number can never fix both flick and creep
+const SCRUB = isCoarse ? true : 0.7;
 
 // decode budget: 48 desktop / 20 mobile; iPads ask for the desktop site, so
 // cap by pointer too (iOS jetsam is real)
@@ -284,7 +286,12 @@ async function init() {
   mixEase = gsap.parseEase('power1.inOut'); // dissolve ramp (spec: blends only)
 
   if (isCoarse) {
-    ScrollTrigger.normalizeScroll(true); // keeps iOS pins solid; Lenis stays off touch
+    // keeps iOS pins solid; momentum clamped so a hard flick can't launch the
+    // film across a whole scene (12s glides feel broken inside a pinned film)
+    ScrollTrigger.normalizeScroll({
+      type: 'touch,wheel,pointer',
+      momentum: (self) => Math.min(1.2, Math.abs(self.velocityY) / 1500),
+    });
   } else {
     const lenis = new Lenis({ autoRaf: false });
     lenis.on('scroll', ScrollTrigger.update);
@@ -317,22 +324,45 @@ async function init() {
   let lastProgress = 0;
   let journeyST = null;
 
+  // touch render smoothing: the finger owns st.px exactly (scrub:true); the
+  // FILM chases it here - frame-rate-independent damping, capped chase speed.
+  // Fixes both failure modes at once: a flick can't teleport the film (MAXV),
+  // and slow creep still glides (the lerp keeps easing between scroll events).
+  const shown = { px: 0 };
+  const filmPx = () => (isCoarse ? shown.px : st.px);
+
   function sink() {
     if (renderMode === 'video') {
       if (video.duration) video.currentTime = lastProgress * video.duration;
       return;
     }
     if (renderMode !== 'canvas' || !film) return;
-    const L = layersAt(plan, st.px);
+    const px = filmPx();
+    const L = layersAt(plan, px);
     // pre-warm the next clip's entry frames at 70% of the current one
     const base = L[0].c;
     const nxt = plan.clips[base.idx + 1];
-    if (nxt && !warmed.has(nxt.idx) && st.px - base.x0 >= 0.7 * (base.x1 - base.x0)) {
+    if (nxt && !warmed.has(nxt.idx) && px - base.x0 >= 0.7 * (base.x1 - base.x0)) {
       warmed.add(nxt.idx);
       film.prewarm(nxt.s, 16, nxt.f0 > nxt.f1);
     }
     if (drag.off) for (const l of L) { if (l.s === drag.s) l.f += drag.off; }
     film.render(L);
+  }
+
+  if (isCoarse) {
+    const MAXV = 1800 * M; // px/s chase cap in plan-px (≈60 frames/s ceiling)
+    gsap.ticker.add((_t, dtMs) => {
+      if (renderMode !== 'canvas') return;
+      const dt = Math.min(0.05, dtMs / 1000); // clamp: background-tab jumps
+      let diff = st.px - shown.px;
+      if (!diff) return;
+      let step = diff * (1 - Math.exp(-8 * dt)); // k = 8/s, fps-independent
+      const cap = MAXV * dt;
+      if (Math.abs(step) > cap) step = Math.sign(step) * cap;
+      shown.px = Math.abs(diff) < 0.25 ? st.px : shown.px + step;
+      sink();
+    });
   }
 
   // -- film plan first, so the px map is concrete when the timeline builds --
@@ -575,7 +605,7 @@ async function init() {
       gsap.killTweensOf(drag);
       // touch engages only on horizontal intent; fine pointers immediately
       d = { px: e.clientX, x0: e.clientX, y0: e.clientY, engaged: e.pointerType !== 'touch' };
-      drag.s = layersAt(plan, st.px)[0].s; // scrub the clip under the pointer
+      drag.s = layersAt(plan, filmPx())[0].s; // scrub the clip under the pointer
       if (d.engaged) canvas.setPointerCapture(e.pointerId);
     });
     canvas.addEventListener('pointermove', (e) => {
