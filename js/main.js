@@ -291,11 +291,12 @@ async function init() {
   mixEase = gsap.parseEase('power1.inOut'); // dissolve ramp (spec: blends only)
 
   if (isCoarse) {
-    // keeps iOS pins solid; momentum clamped so a hard flick can't launch the
-    // film across a whole scene (12s glides feel broken inside a pinned film)
+    // keeps iOS pins solid; momentum lightly clamped - glides must feel native
+    // (the render lerp below already stops the FILM from teleporting, so the
+    // scroll itself can travel; over-clamping here reads as "the page sticks")
     ScrollTrigger.normalizeScroll({
       type: 'touch,wheel,pointer',
-      momentum: (self) => Math.min(1.2, Math.abs(self.velocityY) / 1500),
+      momentum: (self) => Math.min(2.5, Math.abs(self.velocityY) / 800),
     });
   } else {
     const lenis = new Lenis({ autoRaf: false });
@@ -356,7 +357,7 @@ async function init() {
   }
 
   if (isCoarse) {
-    const MAXV = 1800 * M; // px/s chase cap in plan-px (≈60 frames/s ceiling)
+    const MAXV = 2600 * M; // px/s chase cap in plan-px; keeps up with freer glides
     gsap.ticker.add((_t, dtMs) => {
       if (renderMode !== 'canvas') return;
       const dt = Math.min(0.05, dtMs / 1000); // clamp: background-tab jumps
