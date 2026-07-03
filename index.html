@@ -35,7 +35,7 @@
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/FrankRuhlLibre-500-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/Assistant-var-hebrew.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/Assistant-var-latin.woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=onefilm1">
+<link rel="stylesheet" href="css/style.css?v=asm1">
 <script>
 document.documentElement.classList.add('js');
 /* before any library runs: reload mid-pin must land at the top, never inside a pin */
@@ -194,6 +194,30 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     </div>
   </section>
 
+  <!-- ASSEMBLY -->
+  <section class="store-sec store-sec--tight" id="assembly">
+    <p class="kicker srv">ההרכבה</p>
+    <h2 class="srv">מהתיק לרוגע בשתי דקות</h2>
+    <p class="store-lead srv">בלי כלים ובלי הוראות מסובכות. ככה זה נראה, שלב אחרי שלב.</p>
+    <div class="asm srv">
+      <div class="asm__stage">
+        <img class="asm__img on" src="assets/assembly/step-1.webp" alt="תיק הנשיאה הסגור של ערסל Sway מונח על מרפסת" decoding="async">
+        <img class="asm__img" src="assets/assembly/step-2.webp" alt="חלקי הערסל פרוסים על הרצפה: מוטות, בד וברגים" loading="lazy" decoding="async">
+        <img class="asm__img" src="assets/assembly/step-3.webp" alt="בסיס המעמד מחובר ומונח על רצפת המרפסת" loading="lazy" decoding="async">
+        <img class="asm__img" src="assets/assembly/step-4.webp" alt="מעמד הערסל מורכב ומוצב, עדיין בלי הבד" loading="lazy" decoding="async">
+        <img class="asm__img" src="assets/assembly/step-5.webp" alt="ערסל Sway כחול מורכב ומוכן על המרפסת" loading="lazy" decoding="async">
+      </div>
+      <ol class="asm__steps">
+        <li class="asm__step is-on"><button type="button"><strong>הכל מגיע בתיק אחד</strong><span>תיק נשיאה עם רצועת כתף. 8 ק״ג בסך הכל.</span></button></li>
+        <li class="asm__step"><button type="button"><strong>פותחים ופורסים</strong><span>מוטות, בד הערסל וברגי פרפר. זה כל מה שיש.</span></button></li>
+        <li class="asm__step"><button type="button"><strong>מחברים את הבסיס</strong><span>הצינורות נכנסים זה לזה. בלי כלים.</span></button></li>
+        <li class="asm__step"><button type="button"><strong>מקימים את המסגרת</strong><span>מהדקים את ברגי הפרפר ביד. בלי מברג, בלי פטיש.</span></button></li>
+        <li class="asm__step"><button type="button"><strong>תולים ונשכבים</strong><span>מלבישים את הבד על הווים. סיימתם.</span></button></li>
+      </ol>
+    </div>
+    <p class="asm__note srv">מפרקים? אותם שלבים בסדר הפוך, והכל חוזר לתיק.</p>
+  </section>
+
   <!-- SPECS -->
   <section class="store-sec store-sec--tight">
     <p class="kicker srv">המפרט</p>
@@ -304,6 +328,30 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   els.forEach(function (el) { io.observe(el); });
+})();
+
+/* assembly stepper - auto-plays while visible, stops on manual pick */
+(function () {
+  var sec = document.getElementById('assembly');
+  if (!sec) return;
+  var imgs = sec.querySelectorAll('.asm__img');
+  var steps = sec.querySelectorAll('.asm__step');
+  var idx = 0, timer = null, auto = true;
+  function go(n) {
+    idx = n;
+    imgs.forEach(function (im, k) { im.classList.toggle('on', k === n); });
+    steps.forEach(function (s, k) { s.classList.toggle('is-on', k === n); });
+  }
+  function start() { if (auto && !timer) timer = setInterval(function () { go((idx + 1) % imgs.length); }, 3200); }
+  function stop() { clearInterval(timer); timer = null; }
+  steps.forEach(function (s, k) {
+    s.querySelector('button').addEventListener('click', function () { auto = false; stop(); go(k); });
+  });
+  if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    new IntersectionObserver(function (entries) {
+      entries[0].isIntersecting ? start() : stop();
+    }, { threshold: 0.3 }).observe(sec.querySelector('.asm'));
+  }
 })();
 </script>
 

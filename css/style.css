@@ -495,6 +495,79 @@ html.js .srv.in { opacity: 1; transform: none; }
   max-width: 34ch;
 }
 
+/* assembly stepper: photo stage + numbered hairline steps */
+.asm {
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+  margin-top: clamp(40px, 6vw, 72px);
+}
+.asm__stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  aspect-ratio: 16 / 9;
+  background: var(--ink);
+}
+.asm__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.8s var(--ease-sway);
+}
+.asm__img.on { opacity: 1; }
+.asm__steps { list-style: none; margin: 0; padding: 0; counter-reset: asm; }
+.asm__step { counter-increment: asm; border-top: 1px solid rgba(22, 33, 31, 0.16); }
+.asm__step:last-child { border-bottom: 1px solid rgba(22, 33, 31, 0.16); }
+.asm__step button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  width: 100%;
+  padding: 13px 2px;
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: start;
+  color: rgba(22, 33, 31, 0.45);
+  cursor: pointer;
+  transition: color 0.5s var(--ease-sway);
+}
+.asm__step button::before {
+  content: counter(asm, decimal-leading-zero);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--teal);
+  opacity: 0.5;
+  padding-top: 4px;
+  transition: opacity 0.5s var(--ease-sway);
+}
+.asm__step.is-on button { color: var(--ink); }
+.asm__step.is-on button::before { opacity: 1; }
+.asm__step strong {
+  display: block;
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 500;
+  font-size: 1.12rem;
+  line-height: 1.25;
+}
+.asm__step span {
+  display: block;
+  grid-column: 2;
+  margin-top: 3px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.asm__note {
+  margin-top: clamp(20px, 3vw, 32px);
+  color: rgba(22, 33, 31, 0.6);
+  font-size: 0.95rem;
+}
+
 /* color variants: two quiet photo cards, coral only on the buy pill */
 .variants {
   display: grid;
@@ -680,7 +753,7 @@ html.js .srv.in { opacity: 1; transform: none; }
 .store-footer__pay { opacity: 0.7; }
 
 @media (max-width: 760px) {
-  .benefits, .variants, .extras, .specs-grid { grid-template-columns: 1fr; }
+  .benefits, .variants, .extras, .specs-grid, .asm { grid-template-columns: 1fr; }
   .benefits { gap: 28px; }
   .variants .variant + .variant { margin-top: 8px; }
   .store-footer { flex-direction: column; }
