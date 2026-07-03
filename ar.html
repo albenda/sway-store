@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f1ea">
+<title>Sway ב-AR - תראו אותו אצלכם | ערסל מתקפל נייד</title>
+<meta name="description" content="הציבו את ערסל Sway בסלון, במרפסת או בגינה עם המצלמה של הנייד - במידות אמת, לפני שקונים.">
+<style>
+@font-face {
+  font-family: 'Frank Ruhl Libre';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('assets/fonts/FrankRuhlLibre-500-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: 'Frank Ruhl Libre';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('assets/fonts/FrankRuhlLibre-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('assets/fonts/Assistant-var-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face {
+  font-family: 'Assistant';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('assets/fonts/Assistant-var-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+:root {
+  --teal: #1d6f66;
+  --coral: #ec5b3b;
+  --coral-dark: #d24a2d;
+  --sand: #f5f1ea;
+  --ink: #16211f;
+  --ease-sway: cubic-bezier(0.65, 0.05, 0, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--sand);
+  color: var(--ink);
+  font-family: 'Assistant', system-ui, sans-serif;
+  line-height: 1.55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 6vw;
+}
+.wordmark { display: inline-block; text-align: center; text-decoration: none; color: var(--ink); }
+.wordmark__t { font-family: 'Frank Ruhl Libre', serif; font-weight: 500; font-size: 1.5rem; letter-spacing: 0.01em; }
+.wordmark__curve { display: block; width: 2.9em; margin: -2px auto 0; color: var(--teal); }
+.top a.back { color: var(--ink); font-size: 0.95rem; text-decoration: underline; text-underline-offset: 3px; }
+main { flex: 1; display: flex; flex-direction: column; max-width: 1080px; width: 100%; margin-inline: auto; padding: 0 6vw 48px; }
+.kicker { color: var(--teal); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.08em; }
+h1 { font-family: 'Frank Ruhl Libre', serif; font-weight: 500; font-size: clamp(1.9rem, 5vw, 3rem); line-height: 1.12; margin-top: 0.3em; }
+.lead { margin-top: 0.7em; color: rgba(22, 33, 31, 0.72); max-width: 46ch; }
+model-viewer {
+  width: 100%;
+  height: clamp(340px, 56vh, 560px);
+  margin-top: clamp(20px, 4vw, 36px);
+  border-radius: 6px;
+  background: #eceae4;
+  --poster-color: #eceae4;
+}
+.ar-btn {
+  background: var(--coral);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 13px 26px;
+  font: 600 1rem 'Assistant', sans-serif;
+  cursor: pointer;
+  transition: background 0.3s var(--ease-sway);
+}
+.ar-btn:hover { background: var(--coral-dark); }
+.under {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+.hints { color: rgba(22, 33, 31, 0.6); font-size: 0.92rem; max-width: 52ch; }
+.cta {
+  display: inline-block;
+  background: var(--coral);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 13px 30px;
+  font-weight: 600;
+  transition: background 0.3s var(--ease-sway);
+}
+.cta:hover { background: var(--coral-dark); }
+.price { font-weight: 600; margin-inline-end: 12px; }
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="wordmark" href="index.html" aria-label="Sway - לדף הבית">
+    <span class="wordmark__t">Sway</span>
+    <svg class="wordmark__curve" viewBox="0 0 100 14" aria-hidden="true">
+      <path d="M4 3 Q50 16 96 3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  </a>
+  <a class="back" href="index.html#store">חזרה לחנות</a>
+</div>
+
+<main>
+  <p class="kicker">AR</p>
+  <h1>תראו אותו אצלכם, לפני שהוא מגיע</h1>
+  <p class="lead">פתחו את העמוד מהנייד, כוונו את המצלמה, והערסל יופיע אצלכם במידות אמת - 3 מטר של רוגע. תזיזו, תסובבו, תבדקו איפה הוא יושב הכי טוב.</p>
+
+  <model-viewer
+    src="assets/3d/sway-blue.glb"
+    alt="ערסל Sway כחול על מעמד מתקפל - תצוגה תלת-ממדית"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    ar-scale="fixed"
+    camera-controls
+    auto-rotate
+    auto-rotate-delay="1500"
+    rotation-per-second="18deg"
+    shadow-intensity="1"
+    shadow-softness="0.8"
+    camera-orbit="35deg 78deg 4.2m"
+    max-camera-orbit="auto 92deg 7m"
+    field-of-view="32deg">
+    <button slot="ar-button" class="ar-btn">הציבו אותו אצלכם במרחב</button>
+  </model-viewer>
+
+  <div class="under">
+    <p class="hints">מהמחשב? סובבו אותו עם העכבר. כפתור ה-AR מופיע כשגולשים מהנייד. הדגם הכחול כאן, החום בדרך.</p>
+    <p><span class="price">₪450</span><a class="cta" href="checkout.html?color=blue&qty=1">הזמינו עכשיו</a></p>
+  </div>
+</main>
+
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+</body>
+</html>
