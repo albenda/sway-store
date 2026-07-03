@@ -145,7 +145,7 @@ function buildPlanV2(r) {
   });
   plan.settleAt = x;
   plan.total = x + 600 * M;
-  plan.prepx = Math.min(300 * M, (plan.clips[0].x1 - plan.clips[0].x0) * 0.25);
+  plan.prepx = 0; // the journey IS the top of the page - no approach pre-roll
 
   // text beats collapse with their footage; windows clamped inside their block
   const text = (beat, enter, exit) => {
@@ -197,7 +197,7 @@ function buildPlanOld(S) {
     ],
     settleAt: 6200 * M,
     total: 6800 * M,
-    prepx: 600 * M,
+    prepx: 0, // journey starts at page top - no approach pre-roll
   };
 }
 
@@ -301,7 +301,7 @@ async function init() {
 
   // -- split all copy up front (the loader overlay covers this work) --
   const heroInners = [
-    ...splitWords(document.querySelector('.hero h1')),
+    ...splitWords(document.querySelector('.hero__text h1')),
     ...splitWords(document.querySelector('.hero__sub')),
   ];
   gsap.set(heroInners, { y: 28, opacity: 0 });
@@ -467,14 +467,22 @@ async function init() {
         pin: true, scrub: SCRUB, anticipatePin: 1, invalidateOnRefresh: true,
         onToggle: (self) => {
           if (renderMode === 'video') video.style.opacity = self.isActive ? 1 : 0;
-          if (self.isActive && renderMode === 'canvas') showDragHint();
         },
       },
     });
     journeyST = tl.scrollTrigger;
     // render on TIMELINE ticks, not scroll events: the scrub tween keeps easing
     // ~0.7s after the last scroll event, and those settle frames must draw too
-    tl.eventCallback('onUpdate', () => { lastProgress = tl.progress(); sink(); });
+    let dragHintFired = false;
+    tl.eventCallback('onUpdate', () => {
+      lastProgress = tl.progress();
+      // the drag hint waits for the film - never on top of the hero copy
+      if (!dragHintFired && renderMode === 'canvas' && st.px > 400 * M) {
+        dragHintFired = true;
+        showDragHint();
+      }
+      sink();
+    });
 
     // the whole film is ONE linear px tween; clips/dissolves/reverse playback
     // are resolved per-tick by layersAt() from the plan (data, not tweens)
@@ -485,6 +493,11 @@ async function init() {
       tl.fromTo('.fx--tint', { backgroundColor: t.from[0], opacity: t.from[1] },
         { backgroundColor: t.to[0], opacity: t.to[1], duration: t.px, ease: 'power1.inOut', immediateRender: false }, at(t.at));
     }
+
+    // hero copy floats on frame 0 and dissolves with the first scroll - the
+    // opening is INSIDE the film, so there is no section seam to cross
+    tl.fromTo('.hero__text', { opacity: 1, y: 0 },
+      { opacity: 0, y: -28, duration: 220 * M, ease: 'sway', immediateRender: false }, 0);
 
     // text: mask reveal y+opacity only, stagger from 'start' (reading order),
     // always fully out before the next dissolve window opens.
@@ -574,7 +587,7 @@ async function init() {
       .to(['.loader__mark', '.loader__count'], { opacity: 0, duration: 0.45 })
       .to('.loader', { yPercent: -100, duration: 0.9 }, '-=0.1')
       .set('.loader', { display: 'none' })
-      .fromTo('.hero__bg', { scale: 1.06 }, { scale: 1, duration: 1.35 }, '-=0.95')
+      .fromTo('.journey__stage', { scale: 1.04 }, { scale: 1, duration: 1.35, clearProps: 'scale' }, '-=0.95')
       .to('.hero__text .wordmark', { y: 0, opacity: 1, duration: 0.9 }, '-=1.25')
       .to(heroInners, { y: 0, opacity: 1, duration: 0.9, stagger: { amount: 0.35, from: 'start' } }, '-=1.1');
   }

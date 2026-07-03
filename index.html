@@ -66,36 +66,30 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 <!-- sticky mini-CTA: appears from first scroll (locked decision), hidden at outro -->
 <a class="mini-cta" href="checkout.html?color=blue&qty=1">₪450 · הזמינו</a>
 
-<!-- HERO: static frame-0 poster, not pinned; portrait source keeps mobile sharp -->
-<header class="hero">
-  <picture>
-    <source media="(max-width: 820px)" srcset="assets/poster-mobile.webp">
-    <img class="hero__bg" src="assets/poster.webp" alt="ערסל Sway כחול פתוח באור בוקר" fetchpriority="high">
-  </picture>
-  <div class="hero__text">
-    <div class="wordmark" role="img" aria-label="Sway">
-      <span class="wordmark__t">Sway</span>
-      <svg class="wordmark__curve" viewBox="0 0 100 14" aria-hidden="true">
-        <path d="M4 3 Q50 16 96 3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <h1 data-split>הרוגע שהולך איתך</h1>
-    <p class="hero__sub" data-split>מתקפל לתיק, נפתח בכל מקום.</p>
-  </div>
-  <div class="scroll-hint" aria-hidden="true">
-    <span class="kicker">גללו</span>
-    <span class="scroll-hint__line"></span>
-  </div>
-</header>
-
-<!-- JOURNEY: one section, one canvas, one master timeline (pin +=6800 / +=4600) -->
+<!-- JOURNEY: the page OPENS inside the pinned film - no separate hero section,
+     no seam. The hero copy floats on frame 0 and dissolves with the first scroll. -->
 <section class="journey">
   <div class="journey__stage">
     <picture aria-hidden="true">
       <source media="(max-width: 820px)" srcset="assets/poster-mobile.webp">
-      <img class="journey__poster" src="assets/poster.webp" alt="">
+      <img class="journey__poster" src="assets/poster.webp" alt="ערסל Sway כחול פתוח באור בוקר" fetchpriority="high">
     </picture>
     <canvas class="journey__canvas" aria-hidden="true"></canvas>
+
+    <div class="hero__text">
+      <div class="wordmark" role="img" aria-label="Sway">
+        <span class="wordmark__t">Sway</span>
+        <svg class="wordmark__curve" viewBox="0 0 100 14" aria-hidden="true">
+          <path d="M4 3 Q50 16 96 3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h1 data-split>הרוגע שהולך איתך</h1>
+      <p class="hero__sub" data-split>מתקפל לתיק, נפתח בכל מקום.</p>
+    </div>
+    <div class="scroll-hint" aria-hidden="true">
+      <span class="kicker">גללו</span>
+      <span class="scroll-hint__line"></span>
+    </div>
     <div class="fx fx--grain" aria-hidden="true"></div>
     <div class="fx fx--vignette" aria-hidden="true"></div>
     <div class="fx fx--tint" aria-hidden="true"></div>
