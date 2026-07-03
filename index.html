@@ -35,7 +35,7 @@
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/FrankRuhlLibre-500-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/Assistant-var-hebrew.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/Assistant-var-latin.woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=asm2">
+<link rel="stylesheet" href="css/style.css?v=asm3">
 <script>
 document.documentElement.classList.add('js');
 /* before any library runs: reload mid-pin must land at the top, never inside a pin */
@@ -331,8 +331,10 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   els.forEach(function (el) { io.observe(el); });
 })();
 
-/* assembly stepper - auto-plays while visible, stops on manual pick */
+/* assembly stepper - auto-plays while visible, stops on manual pick.
+   coarse pointers skip this: main.js pins the section and scroll drives it */
 (function () {
+  if (matchMedia('(pointer: coarse)').matches || /[?&]coarse=1/.test(location.search)) return;
   var sec = document.getElementById('assembly');
   if (!sec) return;
   var imgs = sec.querySelectorAll('.asm__img');
@@ -363,6 +365,6 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.4/dist/lenis.min.js"></script>
-<script type="module" src="js/main.js?v=onefilm2"></script>
+<script type="module" src="js/main.js?v=asm3"></script>
 </body>
 </html>

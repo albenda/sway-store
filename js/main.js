@@ -382,9 +382,10 @@ async function init() {
       gsap.to('.journey__canvas', { opacity: 1, duration: 0.45, ease: 'sway' });
   }
 
-  // ScrollTriggers in document order: journey pin, then outro pin (no RANK hacks)
+  // ScrollTriggers in document order: journey pin, outro pin, assembly pin
   buildJourneyTimeline();
   buildOutro();
+  setupAssemblyScrub();
 
   // -- preload + fallback ladder --
   // phase A = the first clip, streamed entry-frames-first (reverse clips too);
@@ -559,6 +560,35 @@ async function init() {
       pin: true, anticipatePin: 1, invalidateOnRefresh: true,
       onEnter: () => { document.body.classList.add('at-outro'); otl.play(); },
       onLeaveBack: () => { document.body.classList.remove('at-outro'); otl.reverse(); },
+    });
+  }
+
+  // ---- mobile: assembly stepper becomes a pinned scroll chapter ---------------
+  // touch scrolling steps 1->5 while the section holds, then releases to specs;
+  // desktop keeps the auto-advancing stepper (inline script skips coarse)
+  function setupAssemblyScrub() {
+    if (!isCoarse) return;
+    const sec = document.getElementById('assembly');
+    if (!sec) return;
+    sec.classList.add('asm-pinned');
+    const imgs = sec.querySelectorAll('.asm__img');
+    const steps = sec.querySelectorAll('.asm__step');
+    const N = imgs.length;
+    let cur = 0;
+    const show = (n) => {
+      if (n === cur) return;
+      cur = n;
+      imgs.forEach((im, k) => im.classList.toggle('on', k === n));
+      steps.forEach((s, k) => s.classList.toggle('is-on', k === n));
+    };
+    ScrollTrigger.create({
+      trigger: sec,
+      start: 'top top',
+      end: () => '+=' + N * Math.round(innerHeight * 0.45),
+      pin: true,
+      anticipatePin: 1,
+      invalidateOnRefresh: true,
+      onUpdate: (st) => show(Math.min(N - 1, Math.floor(st.progress * N))),
     });
   }
 

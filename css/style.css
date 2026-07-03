@@ -577,6 +577,16 @@ html.js .srv.in { opacity: 1; transform: none; }
   font-size: 0.95rem;
 }
 
+/* pinned mobile mode (class set by main.js on coarse pointers):
+   compact so the pinned section always fits one small viewport */
+.asm-pinned { padding-bottom: 32px; }
+.asm-pinned .store-lead { display: none; }
+.asm-pinned .asm { margin-top: 20px; }
+.asm-pinned .asm__step button { padding: 10px 2px; }
+.asm-pinned .asm__step span { display: none; }
+.asm-pinned .asm__step.is-on span { display: block; }
+.asm-pinned .asm__note { margin-top: 14px; font-size: 0.88rem; }
+
 /* color variants: two quiet photo cards, coral only on the buy pill */
 .variants {
   display: grid;
