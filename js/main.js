@@ -573,6 +573,7 @@ async function init() {
     sec.classList.add('asm-pinned');
     const imgs = sec.querySelectorAll('.asm__img');
     const steps = sec.querySelectorAll('.asm__step');
+    const bar = sec.querySelector('.asm__bar i');
     const N = imgs.length;
     let cur = 0;
     const show = (n) => {
@@ -584,11 +585,14 @@ async function init() {
     ScrollTrigger.create({
       trigger: sec,
       start: 'top top',
-      end: () => '+=' + N * Math.round(innerHeight * 0.45),
+      end: () => '+=' + N * Math.round(innerHeight * 0.34),
       pin: true,
       anticipatePin: 1,
       invalidateOnRefresh: true,
-      onUpdate: (st) => show(Math.min(N - 1, Math.floor(st.progress * N))),
+      onUpdate: (st) => {
+        if (bar) bar.style.transform = `scaleX(${st.progress})`;
+        show(Math.min(N - 1, Math.floor(st.progress * N)));
+      },
     });
   }
 

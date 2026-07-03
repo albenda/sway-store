@@ -577,6 +577,26 @@ html.js .srv.in { opacity: 1; transform: none; }
   font-size: 0.95rem;
 }
 
+/* live progress bar: continuous motion while the section is pinned,
+   so stepped image swaps never read as a frozen page */
+.asm__bar { display: none; }
+.asm-pinned .asm__bar {
+  display: block;
+  height: 3px;
+  margin-top: 12px;
+  border-radius: 2px;
+  background: rgba(22, 33, 31, 0.12);
+  overflow: hidden;
+}
+.asm-pinned .asm__bar i {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+  transform-origin: right center;
+  transform: scaleX(0);
+}
+.asm-pinned .asm__img { transition-duration: 0.5s; }
+
 /* pinned mobile mode (class set by main.js on coarse pointers):
    compact so the pinned section always fits one small viewport */
 .asm-pinned { padding-bottom: 32px; }
