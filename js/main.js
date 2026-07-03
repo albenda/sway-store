@@ -6,7 +6,9 @@ import { createFilm } from './sequencer.js';
 
 const html = document.documentElement;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const isCoarse = matchMedia('(pointer: coarse)').matches;
+// ?coarse=1 forces the touch code path for desktop debugging of iOS behavior
+const isCoarse = matchMedia('(pointer: coarse)').matches
+  || new URLSearchParams(location.search).has('coarse');
 const isMobile = matchMedia('(max-width: 820px)').matches;
 const isFine = matchMedia('(pointer: fine)').matches;
 
@@ -179,24 +181,27 @@ function buildPlanOld(S) {
   const F = S.frames - 1;
   const u = (k) =>
     Array.from({ length: S.frames }, (_, i) => `assets/seq/${S.dirs[k]}/f_${pad3(i + 1)}.${S.ext}`);
+  // ONE continuous take: each clip CONTINUES the camera arc from the exact
+  // frame the previous one ended on (match-cut chain). The 60px fade sits on
+  // pixel-matched compositions - it softens residue, it is not a "transition".
   return {
     series: [u(0), u(1), u(2)],
     clips: [
       { idx: 0, s: 0, x0: 0, x1: 2400 * M, f0: 0, f1: F, fade: 0 },
-      { idx: 1, s: 1, x0: 1900 * M, x1: 4300 * M, f0: 0, f1: F, fade: 500 * M },
-      { idx: 2, s: 2, x0: 3800 * M, x1: 6200 * M, f0: 0, f1: F, fade: 500 * M },
+      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: 60 * M },
+      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: 60 * M },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
     texts: [
-      { beat: 'beach', enter: 2600 * M, exit: 3500 * M },
-      { beat: 'desert', enter: 4500 * M, exit: 5700 * M },
+      { beat: 'beach', enter: 3000 * M, exit: 4100 * M },
+      { beat: 'desert', enter: 5400 * M, exit: 6500 * M },
     ],
     tints: [
-      { at: 1900 * M, px: 500 * M, from: ['#1d6f66', 0.12], to: ['#ec5b3b', 0.05] },
-      { at: 3800 * M, px: 500 * M, from: ['#ec5b3b', 0.05], to: ['#0b1b19', 0.12] },
+      { at: 2200 * M, px: 400 * M, from: ['#1d6f66', 0.12], to: ['#ec5b3b', 0.05] },
+      { at: 4550 * M, px: 400 * M, from: ['#ec5b3b', 0.05], to: ['#0b1b19', 0.12] },
     ],
-    settleAt: 6200 * M,
-    total: 6800 * M,
+    settleAt: 7080 * M,
+    total: 7680 * M,
     prepx: 0, // journey starts at page top - no approach pre-roll
   };
 }
@@ -399,9 +404,12 @@ async function init() {
       seen.add(c.s);
       bUrls.push(...ordered(c));
     }
-    phaseA = preloadPhaseA(ordered(c0), { onProgress: (l, t) => counterUpdate(l, t) });
+    // gate = scene 1 + the first beat of scene 2: a sprint-scroller lands on
+    // loaded frames at the first seam instead of outrunning the stream
+    const gateUrls = [...ordered(c0), ...bUrls.slice(0, 16)];
+    phaseA = preloadPhaseA(gateUrls, { onProgress: (l, t) => counterUpdate(l, t) });
     phaseA
-      .then(() => { sink(); preloadPhaseB(bUrls); })
+      .then(() => { sink(); preloadPhaseB(bUrls.slice(16), { concurrency: 6 }); })
       .catch((e) => { console.warn('sequence tier failed:', e); dropToVideo(); });
   } else {
     dropToVideo(); // iOS <= 14: no createImageBitmap
