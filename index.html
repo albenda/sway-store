@@ -35,7 +35,7 @@
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/FrankRuhlLibre-500-latin.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/Assistant-var-hebrew.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/Assistant-var-latin.woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=feel1">
+<link rel="stylesheet" href="css/style.css?v=ar2">
 <script>
 document.documentElement.classList.add('js');
 /* before any library runs: reload mid-pin must land at the top, never inside a pin */
@@ -192,7 +192,17 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
         </span>
       </a>
     </div>
-    <p class="ar-link srv"><a href="ar.html">רוצים לבדוק איך הוא ייראה אצלכם? צפו בו ב-AR, במידות אמת</a></p>
+    <div class="ar-entry srv">
+      <button type="button" class="ar-entry__btn" id="arEntryBtn">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 20.5 7.25v9.5L12 21.5l-8.5-4.75v-9.5Z"/><path d="M12 12 20.5 7.25M12 12v9.5M12 12 3.5 7.25"/></svg>
+        תראו אותו אצלכם בבית
+      </button>
+      <span class="ar-entry__note">מצלמת הנייד מציבה אותו אצלכם במידות אמת. בלי אפליקציה.</span>
+      <div class="ar-entry__qr" id="arEntryQr" hidden>
+        <img src="assets/3d/ar-qr.png" alt="קוד QR לפתיחת התצוגה בנייד" width="132" height="132" loading="lazy" decoding="async">
+        <span>סרקו עם הנייד, והערסל יופיע אצלכם בסלון</span>
+      </div>
+    </div>
   </section>
 
   <!-- ASSEMBLY -->
@@ -330,6 +340,17 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   els.forEach(function (el) { io.observe(el); });
+})();
+
+/* AR entry: phones jump straight into the AR page, desktop reveals a QR */
+(function () {
+  var btn = document.getElementById('arEntryBtn');
+  if (!btn) return;
+  var qr = document.getElementById('arEntryQr');
+  btn.addEventListener('click', function () {
+    if (matchMedia('(pointer: coarse)').matches) { location.href = 'ar.html'; return; }
+    qr.hidden = !qr.hidden;
+  });
 })();
 
 /* assembly stepper - auto-plays while visible, stops on manual pick.
