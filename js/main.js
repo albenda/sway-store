@@ -189,7 +189,9 @@ function buildPlanOld(S) {
     clips: [
       { idx: 0, s: 0, x0: 0, x1: 2400 * M, f0: 0, f1: F, fade: 0 },
       { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: 60 * M },
-      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: 60 * M },
+      // day-beach -> night-desert is a big exposure jump; a longer dissolve
+      // (180px vs 60px) lets the eye adapt instead of reading a hard cut
+      { idx: 2, s: 2, x0: 4560 * M, x1: 7080 * M, f0: 0, f1: F, fade: 180 * M },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
     texts: [
@@ -557,9 +559,11 @@ async function init() {
       .to('.outro__group', { opacity: 1, duration: 0.45 }, '-=0.15');
 
     ScrollTrigger.create({
-      trigger: '.outro', start: 'top top', end: '+=600',
+      // longer hold + faster reveal: a sprint-scroller still sees the price
+      // land before the pin releases (this is the purchase moment)
+      trigger: '.outro', start: 'top top', end: '+=950',
       pin: true, anticipatePin: 1, invalidateOnRefresh: true,
-      onEnter: () => { document.body.classList.add('at-outro'); otl.play(); },
+      onEnter: () => { document.body.classList.add('at-outro'); otl.timeScale(1.25).play(); },
       onLeaveBack: () => { document.body.classList.remove('at-outro'); otl.reverse(); },
     });
   }
