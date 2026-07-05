@@ -64,24 +64,24 @@ async function resolveSeries() {
       const r = await fetch('assets/seq/s1a/f_001.avif');
       if (r.ok) {
         await createImageBitmap(await r.blob());
-        return { dirs: ['s1a', 's2a', 's3a', 'sbra'], ext: 'avif', frames: 60, bridge: 19 };
+        return { dirs: ['s1a', 's2a', 'sfa', 'sfba'], ext: 'avif', frames: 60, bridge: 19 };
       }
     } catch (e) { /* webp it is */ }
-    return { dirs: ['s1', 's2', 's3', 'sbr'], ext: 'webp', frames: 60, bridge: 19 };
+    return { dirs: ['s1', 's2', 'sf', 'sfb'], ext: 'webp', frames: 60, bridge: 19 };
   }
   try {
     const r = await fetch('assets/seq/d1a/f_001.avif');
     if (r.ok) {
       await createImageBitmap(await r.blob()); // decodability probe, not just 200
-      return { dirs: ['d1a', 'd2a', 'd3a', 'dbra'], ext: 'avif', frames: 80, bridge: 19 };
+      return { dirs: ['d1a', 'd2a', 'dfa', 'dfba'], ext: 'avif', frames: 80, bridge: 19 };
     }
   } catch (e) { /* no avif yet: fall through silently */ }
   try {
     const r = await fetch('assets/seq/d1/f_001.webp');
-    if (r.ok) return { dirs: ['d1', 'd2', 'd3', 'dbr'], ext: 'webp', frames: 80, bridge: 19 };
+    if (r.ok) return { dirs: ['d1', 'd2', 'df', 'dfb'], ext: 'webp', frames: 80, bridge: 19 };
   } catch (e) { /* fall through */ }
   // ponytail: desktop 2K set still extracting - portrait set as interim
-  return { dirs: ['s1', 's2', 's3', 'sbr'], ext: 'webp', frames: 60, bridge: 19 };
+  return { dirs: ['s1', 's2', 'sf', 'sfb'], ext: 'webp', frames: 60, bridge: 19 };
 }
 
 // ---- film plan --------------------------------------------------------------
@@ -213,7 +213,7 @@ function buildPlanOld(S) {
     ],
     tints: [
       { at: 2200 * M, px: 400 * M, from: ['#1d6f66', 0.12], to: ['#ec5b3b', 0.05] },
-      { at: 4550 * M, px: 400 * M, from: ['#ec5b3b', 0.05], to: ['#0b1b19', 0.12] },
+      { at: 4550 * M, px: 500 * M, from: ['#ec5b3b', 0.05], to: ['#11514a', 0.08] },
     ],
     settleAt: 7080 * M,
     total: 7680 * M,
