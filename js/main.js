@@ -64,24 +64,24 @@ async function resolveSeries() {
       const r = await fetch('assets/seq/s1a/f_001.avif');
       if (r.ok) {
         await createImageBitmap(await r.blob());
-        return { dirs: ['s1a', 's2a', 's3a'], ext: 'avif', frames: 60 };
+        return { dirs: ['s1a', 's2a', 's3a', 'sbra'], ext: 'avif', frames: 60, bridge: 10 };
       }
     } catch (e) { /* webp it is */ }
-    return { dirs: ['s1', 's2', 's3'], ext: 'webp', frames: 60 };
+    return { dirs: ['s1', 's2', 's3', 'sbr'], ext: 'webp', frames: 60, bridge: 10 };
   }
   try {
     const r = await fetch('assets/seq/d1a/f_001.avif');
     if (r.ok) {
       await createImageBitmap(await r.blob()); // decodability probe, not just 200
-      return { dirs: ['d1a', 'd2a', 'd3a'], ext: 'avif', frames: 80 };
+      return { dirs: ['d1a', 'd2a', 'd3a', 'dbra'], ext: 'avif', frames: 80, bridge: 10 };
     }
   } catch (e) { /* no avif yet: fall through silently */ }
   try {
     const r = await fetch('assets/seq/d1/f_001.webp');
-    if (r.ok) return { dirs: ['d1', 'd2', 'd3'], ext: 'webp', frames: 80 };
+    if (r.ok) return { dirs: ['d1', 'd2', 'd3', 'dbr'], ext: 'webp', frames: 80, bridge: 10 };
   } catch (e) { /* fall through */ }
   // ponytail: desktop 2K set still extracting - portrait set as interim
-  return { dirs: ['s1', 's2', 's3'], ext: 'webp', frames: 60 };
+  return { dirs: ['s1', 's2', 's3', 'sbr'], ext: 'webp', frames: 60, bridge: 10 };
 }
 
 // ---- film plan --------------------------------------------------------------
@@ -190,16 +190,20 @@ function buildPlanOld(S) {
   // ONE continuous take: each clip CONTINUES the camera arc from the exact
   // frame the previous one ended on (match-cut chain). The 60px fade sits on
   // pixel-matched compositions - it softens residue, it is not a "transition".
+  const BR = S.bridge || 10;
+  const ub = () =>
+    Array.from({ length: BR }, (_, i) => `assets/seq/${S.dirs[3]}/f_${pad3(i + 1)}.${S.ext}`);
   return {
-    series: [u(0), u(1), u(2)],
+    series: [u(0), u(1), u(2), ub()],
     clips: [
       { idx: 0, s: 0, x0: 0, x1: 2400 * M, f0: 0, f1: F, fade: 0 },
-      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, xm: 4560 * M, f0: 0, f1: F, fade: 60 * M },
-      // day-beach -> night-desert: matched-frame STATIC dissolve. The beach
-      // holds its final frame (xm) and the desert holds its first (lead) for
-      // the whole 180px fade - the product stays pixel-frozen while only the
-      // environment melts. Motion resumes when the fade completes.
-      { idx: 2, s: 2, x0: 4560 * M, x1: 7080 * M, lead: 180 * M, f0: 0, f1: F, fade: 180 * M },
+      { idx: 1, s: 1, x0: 2340 * M, x1: 4560 * M, f0: 0, f1: F, fade: 60 * M },
+      // day-beach -> night-desert: BAKED day-to-night bridge frames. The camera
+      // holds on the matched composition while the environment itself darkens
+      // frame by frame (nano-generated, product pixel-locked in every frame).
+      // No alpha dissolve here - every rendered frame has exactly one hammock.
+      { idx: 2, s: 3, x0: 4560 * M, x1: 4740 * M, f0: 0, f1: BR - 1, fade: 0 },
+      { idx: 3, s: 2, x0: 4740 * M, x1: 7080 * M, f0: 0, f1: F, fade: 0 },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
     texts: [
