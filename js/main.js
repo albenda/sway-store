@@ -190,21 +190,16 @@ function buildPlanOld(S) {
   // ONE continuous take: each clip CONTINUES the camera arc from the exact
   // frame the previous one ended on (match-cut chain). The 60px fade sits on
   // pixel-matched compositions - it softens residue, it is not a "transition".
-  const BR = S.bridge || 19;
-  const ub = () =>
-    Array.from({ length: BR }, (_, i) => `assets/seq/${S.dirs[3]}/f_${pad3(i + 1)}.${S.ext}`);
   return {
-    series: [u(0), u(1), u(2), ub()],
+    series: [u(0), u(1), u(2)],
     clips: [
       { idx: 0, s: 0, x0: 0, x1: 2400 * M, f0: 0, f1: F, fade: 0 },
-      { idx: 1, s: 1, x0: 2340 * M, x1: 4560 * M, f0: 0, f1: F, fade: 60 * M },
-      // day-beach -> night-desert: BAKED day-to-night bridge, a full chapter of
-      // scroll (740px). The camera holds on the matched composition while the
-      // environment darkens frame by frame (nano-generated, product pixel-locked
-      // in every frame). No alpha dissolve - every rendered frame has exactly
-      // one hammock, and the melt is long enough to READ even on a hard flick.
-      { idx: 2, s: 3, x0: 4560 * M, x1: 5300 * M, f0: 0, f1: BR - 1, fade: 0 },
-      { idx: 3, s: 2, x0: 5300 * M, x1: 7080 * M, f0: 0, f1: F, fade: 0 },
+      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: 60 * M },
+      // beach -> forest: the SAME stitch as balcony -> beach. The forest orbit
+      // was generated as a direct continuation of the beach's final frame
+      // (env-swap, product pixel-identical, same camera), so the orbit never
+      // stops - a short 60px fade on matched frames and the world has changed.
+      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: 60 * M },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
     texts: [
