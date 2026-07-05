@@ -22,5 +22,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+      # Pages deployment service intermittently returns "Deployment failed, try
+      # again later" (error_count: 10). One in-run retry absorbs the flake so
+      # pushes don't fail (and don't spam failure notifications).
       - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - name: Wait before retry
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 45
+      - id: deployment-retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
