@@ -64,24 +64,24 @@ async function resolveSeries() {
       const r = await fetch('assets/seq/s1a/f_001.avif');
       if (r.ok) {
         await createImageBitmap(await r.blob());
-        return { dirs: ['s1a', 's2a', 'sfa', 'sfba'], ext: 'avif', frames: 60, bridge: 19 };
+        return { dirs: ['s1a', 's2a', 'sfa', 'sfba2'], ext: 'avif', frames: 60, bridge: 19 };
       }
     } catch (e) { /* webp it is */ }
-    return { dirs: ['s1', 's2', 'sf', 'sfb'], ext: 'webp', frames: 60, bridge: 19 };
+    return { dirs: ['s1', 's2', 'sf', 'sfb2'], ext: 'webp', frames: 60, bridge: 19 };
   }
   try {
     const r = await fetch('assets/seq/d1a/f_001.avif');
     if (r.ok) {
       await createImageBitmap(await r.blob()); // decodability probe, not just 200
-      return { dirs: ['d1a', 'd2a', 'dfa', 'dfba'], ext: 'avif', frames: 80, bridge: 19 };
+      return { dirs: ['d1a', 'd2a', 'dfa', 'dfba2'], ext: 'avif', frames: 80, bridge: 19 };
     }
   } catch (e) { /* no avif yet: fall through silently */ }
   try {
     const r = await fetch('assets/seq/d1/f_001.webp');
-    if (r.ok) return { dirs: ['d1', 'd2', 'df', 'dfb'], ext: 'webp', frames: 80, bridge: 19 };
+    if (r.ok) return { dirs: ['d1', 'd2', 'df', 'dfb2'], ext: 'webp', frames: 80, bridge: 19 };
   } catch (e) { /* fall through */ }
   // ponytail: desktop 2K set still extracting - portrait set as interim
-  return { dirs: ['s1', 's2', 'sf', 'sfb'], ext: 'webp', frames: 60, bridge: 19 };
+  return { dirs: ['s1', 's2', 'sf', 'sfb2'], ext: 'webp', frames: 60, bridge: 19 };
 }
 
 // ---- film plan --------------------------------------------------------------
