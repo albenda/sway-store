@@ -93,7 +93,13 @@ function layersAt(plan, px) {
   const L = [];
   for (const c of cs) {
     if (px < c.x0 || px >= c.x1) continue;
-    const t = (px - c.x0) / (c.x1 - c.x0);
+    // frame motion can be narrower than the layer's life:
+    // `lead` holds f0 while the clip fades IN (matched-frame dissolve),
+    // `xm` ends motion early so the clip holds f1 while fading OUT under
+    // the next clip. Both default to the old full-range behavior.
+    const m0 = c.x0 + (c.lead || 0);
+    const m1 = c.xm || c.x1;
+    const t = Math.min(1, Math.max(0, (px - m0) / (m1 - m0)));
     L.push({
       s: c.s,
       f: c.f0 + (c.f1 - c.f0) * t,
@@ -188,10 +194,12 @@ function buildPlanOld(S) {
     series: [u(0), u(1), u(2)],
     clips: [
       { idx: 0, s: 0, x0: 0, x1: 2400 * M, f0: 0, f1: F, fade: 0 },
-      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: 60 * M },
-      // day-beach -> night-desert is a big exposure jump; a longer dissolve
-      // (180px vs 60px) lets the eye adapt instead of reading a hard cut
-      { idx: 2, s: 2, x0: 4560 * M, x1: 7080 * M, f0: 0, f1: F, fade: 180 * M },
+      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, xm: 4560 * M, f0: 0, f1: F, fade: 60 * M },
+      // day-beach -> night-desert: matched-frame STATIC dissolve. The beach
+      // holds its final frame (xm) and the desert holds its first (lead) for
+      // the whole 180px fade - the product stays pixel-frozen while only the
+      // environment melts. Motion resumes when the fade completes.
+      { idx: 2, s: 2, x0: 4560 * M, x1: 7080 * M, lead: 180 * M, f0: 0, f1: F, fade: 180 * M },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
     texts: [
