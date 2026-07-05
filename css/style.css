@@ -90,6 +90,22 @@ h1, h2 {
 
 .hero__text .wordmark { font-size: clamp(1.5rem, 2.6vw, 2.3rem); margin-bottom: 1.4em; }
 
+/* a11y: skip link - offscreen until keyboard focus */
+.skip {
+  position: fixed;
+  top: -60px;
+  inset-inline-start: 16px;
+  z-index: 200;
+  background: var(--sand);
+  color: var(--ink);
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+.skip:focus { top: 12px; }
+
 .brand-mark {
   position: fixed;
   top: max(14px, env(safe-area-inset-top));
@@ -97,13 +113,14 @@ h1, h2 {
   z-index: 50;
   font-size: 1.15rem;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transform: translateY(-8px);
-  transition: opacity 0.45s var(--ease-sway), transform 0.45s var(--ease-sway);
+  transition: opacity 0.45s var(--ease-sway), transform 0.45s var(--ease-sway), visibility 0s 0.45s;
 }
-body.scrolled .brand-mark { opacity: 1; pointer-events: auto; transform: none; }
+body.scrolled .brand-mark { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition-delay: 0s; }
 body.at-outro .brand-mark { color: var(--ink); }
-html:not(.js) .brand-mark { opacity: 1; pointer-events: auto; transform: none; }
+html:not(.js) .brand-mark { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
 
 /* ---------- word-split masks (JS wraps [data-split] words) ---------- */
 .w {
@@ -159,18 +176,21 @@ html.js .loader { display: grid; }
   font-size: 0.95rem;
   unicode-bidi: plaintext;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transform: translateY(-8px);
-  transition: opacity 0.45s var(--ease-sway), transform 0.45s var(--ease-sway);
+  transition: opacity 0.45s var(--ease-sway), transform 0.45s var(--ease-sway), visibility 0s 0.45s;
 }
 body.scrolled .mini-cta {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
   transform: none;
+  transition-delay: 0s;
 }
 /* two CTAs on screen reads bargain-bin: hide the mini while the outro owns the sale */
-body.at-outro .mini-cta { opacity: 0; pointer-events: none; transform: translateY(-8px); }
-html:not(.js) .mini-cta { opacity: 1; pointer-events: auto; transform: none; }
+body.at-outro .mini-cta { opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-8px); }
+html:not(.js) .mini-cta { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
 
 /* ---------- hero copy: an overlay INSIDE the pinned film (no hero section,
    no seam - the page opens already inside the journey) ---------- */
@@ -493,6 +513,19 @@ html.js .srv.in { opacity: 1; transform: none; }
   color: rgba(22, 33, 31, 0.7);
   font-size: 1rem;
   max-width: 34ch;
+}
+
+/* trust row + struck old price in the buy pills */
+.trust-row {
+  margin-top: 16px;
+  font-size: 0.92rem;
+  color: rgba(22, 33, 31, 0.6);
+}
+.buy-pill s {
+  font-weight: 400;
+  font-size: 0.85em;
+  opacity: 0.75;
+  margin-inline-start: 4px;
 }
 
 /* AR entry: quiet utility button attached to the product media,

@@ -5,10 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sway - השלמת הזמנה</title>
 <meta name="robots" content="noindex">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@700;900&family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
+  @font-face {
+    font-family: 'Frank Ruhl Libre';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('assets/fonts/FrankRuhlLibre-500-hebrew.woff2') format('woff2');
+    unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+  }
+  @font-face {
+    font-family: 'Frank Ruhl Libre';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('assets/fonts/FrankRuhlLibre-500-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Assistant';
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url('assets/fonts/Assistant-var-hebrew.woff2') format('woff2');
+    unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+  }
+  @font-face {
+    font-family: 'Assistant';
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url('assets/fonts/Assistant-var-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
   :root{
     --teal:#1d6f66; --teal-d:#11514a; --coral:#ec5b3b; --coral-d:#d24a2d;
     --sand:#f5f1ea; --ink:#16211f; --ink-soft:#43524e; --line:#e4ded3;
@@ -29,7 +58,7 @@
   label{display:block;font-weight:700;margin:16px 0 6px;font-size:.98rem}
   input[type=text],input[type=tel]{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;
     font:inherit;font-size:1rem;background:#fff;transition:border-color .2s}
-  input:focus{outline:none;border-color:var(--teal)}
+  input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 2px var(--teal)}
   input.err{border-color:var(--coral-d)}
   .hint{font-size:.86rem;color:var(--ink-soft);margin-top:5px}
   .errmsg{display:none;color:var(--coral-d);font-weight:700;font-size:.9rem;margin-top:5px}
@@ -85,7 +114,7 @@
 
 <div class="top">
   <a class="logo" href="index.html">Sway</a>
-  <a class="back" href="index.html#offer">‹ חזרה לחנות</a>
+  <a class="back" href="index.html#store">› חזרה לחנות</a>
 </div>
 
 <div class="card">
@@ -99,33 +128,34 @@
       <span id="sumTxt">ערסל Sway × 1</span>
       <span class="tot" id="sumTot">₪450</span>
     </div>
+    <div class="hint hidden" id="anchorLine" style="margin:-16px 0 22px">במקום ₪700 · חסכתם ₪250</div>
 
     <label id="colorLabel">צבע</label>
-    <div class="swatches" id="colorPick"></div>
+    <div class="swatches" id="colorPick" role="radiogroup" aria-label="צבע"></div>
 
     <label>כמות</label>
     <div class="stepper">
-      <button type="button" data-q="-1">−</button>
-      <span id="qtyEl">1</span>
-      <button type="button" data-q="1">+</button>
+      <button type="button" data-q="-1" aria-label="הפחתת כמות">−</button>
+      <span id="qtyEl" aria-live="polite">1</span>
+      <button type="button" data-q="1" aria-label="הוספת כמות">+</button>
     </div>
 
     <div class="row2">
       <div>
         <label for="fName">שם מלא</label>
-        <input type="text" id="fName" autocomplete="name" placeholder="ישראל ישראלי">
-        <div class="errmsg" id="eName">כתבו שם מלא</div>
+        <input type="text" id="fName" autocomplete="name" placeholder="ישראל ישראלי" aria-describedby="eName">
+        <div class="errmsg" id="eName" role="alert">כתבו שם מלא</div>
       </div>
       <div>
         <label for="fPhone">טלפון נייד</label>
-        <input type="tel" id="fPhone" autocomplete="tel" inputmode="tel" placeholder="050-0000000" dir="ltr" style="text-align:right">
-        <div class="errmsg" id="ePhone">מספר נייד ישראלי, 10 ספרות</div>
+        <input type="tel" id="fPhone" autocomplete="tel" inputmode="tel" placeholder="050-0000000" dir="ltr" style="text-align:right" aria-describedby="ePhone">
+        <div class="errmsg" id="ePhone" role="alert">מספר נייד ישראלי, 10 ספרות</div>
       </div>
     </div>
 
     <label for="fAddr">כתובת למשלוח</label>
-    <input type="text" id="fAddr" autocomplete="street-address" placeholder="רחוב, מספר בית, עיר">
-    <div class="errmsg" id="eAddr">כתבו רחוב, מספר ועיר</div>
+    <input type="text" id="fAddr" autocomplete="street-address" placeholder="רחוב, מספר בית, עיר" aria-describedby="eAddr">
+    <div class="errmsg" id="eAddr" role="alert">כתבו רחוב, מספר ועיר</div>
     <div class="hint">משלוח חינם למרכז. לצפון ולדרום נתאם תוספת בוואטסאפ.</div>
 
     <!-- group buy -->
@@ -138,24 +168,26 @@
         </span>
       </label>
       <div class="group-fields">
-        <label for="fFriends" style="margin-top:0">כמה משתתפים בקנייה? (כולל אתכם)</label>
+        <span style="display:block;font-weight:700;margin:0 0 6px;font-size:.98rem">כמה משתתפים בקנייה? (כולל אתכם)</span>
         <div class="stepper">
           <button type="button" data-g="-1">−</button>
           <span id="friendsEl">4</span>
           <button type="button" data-g="1">+</button>
         </div>
         <div class="split-line" id="splitLine"></div>
-        <div class="errmsg" id="eGroup">החלק לאדם קטן מדי (מינימום ₪20). הקטינו את מספר המשתתפים.</div>
+        <div class="errmsg" id="eGroup" role="alert">החלק לאדם קטן מדי (מינימום ₪20). הקטינו את מספר המשתתפים.</div>
       </div>
     </div>
 
-    <button class="btn" id="submitBtn">המשך לתשלום ›</button>
+    <button class="btn" id="submitBtn">המשך לתשלום ‹</button>
+    <div class="formfoot">30 יום החזרה · משלוח חינם למרכז · 3-5 ימי עסקים</div>
+    <div class="formfoot" style="font-size:.8rem;margin-top:6px">בלחיצה על המשך אתם מאשרים את <a href="terms.html" style="text-decoration:underline">התקנון</a> ואת <a href="returns.html" style="text-decoration:underline">מדיניות ההחזרות</a></div>
     <div class="formfoot">בלי כרטיס אשראי באתר. משלמים בביט או ב-PayBox, בטלפון שלכם.</div>
   </div>
 
   <!-- ========== STEP 2: PAYMENT INSTRUCTIONS ========== -->
   <div id="payPanel">
-    <h1>ההזמנה נקלטה!</h1>
+    <h1 tabindex="-1">ההזמנה נקלטה!</h1>
     <p class="sub" id="payIntro"></p>
 
     <div class="orderno">
@@ -167,7 +199,7 @@
       <h3>PayBox</h3>
       <p>לוחצים, משלמים את הסכום, וכותבים בהערת התשלום את מספר ההזמנה. עובד גם בלי האפליקציה.</p>
       <div class="refline"><span id="payboxRef"></span><button type="button" data-copy="#payboxRef">העתקה</button></div>
-      <a class="btn teal" id="payboxBtn" target="_blank" rel="noopener">לתשלום ב-PayBox ›</a>
+      <a class="btn teal" id="payboxBtn" target="_blank" rel="noopener">לתשלום ב-PayBox ‹</a>
       <p class="hint hidden" id="cardCapNote">שימו לב: PayBox מגביל תשלום בכרטיס חיצוני ל-1,000 ש"ח בחודש למשלם. מעל זה - עדיף ביט או תשלום מתוך אפליקציית PayBox.</p>
     </div>
 
@@ -184,7 +216,7 @@
       <p>הכנו לכם הודעה מוכנה לקבוצת הוואטסאפ:</p>
       <textarea class="share" id="shareMsg" readonly></textarea>
       <div class="mini-actions">
-        <a class="btn wa" id="shareWa" target="_blank" rel="noopener">שיתוף בוואטסאפ ›</a>
+        <a class="btn wa" id="shareWa" target="_blank" rel="noopener">שיתוף בוואטסאפ ‹</a>
         <button class="btn teal" type="button" data-copy="#shareMsg">העתקת ההודעה</button>
       </div>
     </div>
@@ -194,7 +226,7 @@
       ונחזור אליכם בוואטסאפ עם אישור. המשלוח יוצא מיד אחרי אישור התשלום.
     </div>
 
-    <a class="btn wa" id="confirmWa" target="_blank" rel="noopener">שילמתי, אשרו לי בוואטסאפ ›</a>
+    <a class="btn wa" id="confirmWa" target="_blank" rel="noopener">שילמתי, אשרו לי בוואטסאפ ‹</a>
   </div>
 
 </div>
@@ -244,6 +276,7 @@
     pick.style.display = 'none';
   }
   if (PRODUCT !== 'sway-hammock') document.querySelector('.back').href = 'shop.html';
+  else document.getElementById('anchorLine').classList.remove('hidden'); // price anchor: hammock only
 
   function shekel(n){ return '₪' + n.toLocaleString('he-IL'); }
   function total(){ return st.qty * P.price; }
@@ -257,7 +290,9 @@
     document.getElementById('qtyEl').textContent = st.qty;
     document.getElementById('friendsEl').textContent = st.friends;
     document.querySelectorAll('#colorPick .swatch').forEach(function(b){
-      b.classList.toggle('sel', b.dataset.color === st.color);
+      var isSelected = b.dataset.color === st.color;
+      b.classList.toggle('sel', isSelected);
+      b.setAttribute('aria-pressed', String(isSelected));
     });
     var ok = friendShare() >= MIN_SHARE;
     var sl = document.getElementById('splitLine');
@@ -294,17 +329,20 @@
   // ---------- validation ----------
   function cleanPhone(v){ return (v || '').replace(/\D/g, ''); }
   function validate(){
-    var okAll = true;
+    var okAll = true, firstBad = null;
     function mark(id, eid, ok){
-      document.getElementById(id).classList.toggle('err', !ok);
+      var el = document.getElementById(id);
+      el.classList.toggle('err', !ok);
+      el.setAttribute('aria-invalid', String(!ok));
       document.getElementById(eid).style.display = ok ? 'none' : 'block';
-      if (!ok) okAll = false;
+      if (!ok) { okAll = false; if (!firstBad) firstBad = el; }
     }
     mark('fName', 'eName', document.getElementById('fName').value.trim().length >= 2);
     mark('fPhone', 'ePhone', /^05\d{8}$/.test(cleanPhone(document.getElementById('fPhone').value)));
     mark('fAddr', 'eAddr', document.getElementById('fAddr').value.trim().length >= 5);
     if (st.group && friendShare() < MIN_SHARE) okAll = false;
     render();
+    if (firstBad) firstBad.focus(); // a11y: move focus to first invalid field
     return okAll;
   }
 
@@ -332,7 +370,7 @@
     } catch (e) {
       alert('שגיאת רשת. בדקו את החיבור ונסו שוב.');
     }
-    btn.removeAttribute('disabled'); btn.textContent = 'המשך לתשלום ›';
+    btn.removeAttribute('disabled'); btn.textContent = 'המשך לתשלום ‹';
   });
 
   // ---------- payment panel ----------
@@ -343,6 +381,7 @@
     document.getElementById('formPanel').style.display = 'none';
     document.getElementById('payPanel').style.display = 'block';
     window.scrollTo(0, 0);
+    document.querySelector('#payPanel h1').focus(); // a11y: announce the panel swap
 
     document.getElementById('orderNoEl').textContent = d.order_no;
     document.getElementById('payIntro').textContent = st.group
@@ -389,7 +428,7 @@
     if (!CFG.PAYBOX_LINK && !CFG.BIT_PHONE) {
       document.getElementById('payIntro').textContent =
         'קיבלנו את ההזמנה. נשלח לכם עכשיו בוואטסאפ את פרטי התשלום. לחצו למטה כדי לפתוח את השיחה:';
-      document.getElementById('confirmWa').textContent = 'המשך בוואטסאפ ›';
+      document.getElementById('confirmWa').textContent = 'המשך בוואטסאפ ‹';
     }
 
     // WhatsApp confirm

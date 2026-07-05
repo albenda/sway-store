@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /checkout.html
+Disallow: /success.html
+Disallow: /cancel.html
+
+Sitemap: https://albenda.github.io/sway-store/sitemap.xml
