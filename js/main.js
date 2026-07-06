@@ -61,13 +61,13 @@ async function resolveSeries() {
   if (isMobile) {
     // iOS 16+ decodes AVIF: probe the mobile avif twins, drop to webp silently
     try {
-      const r = await fetch('assets/seq/s1ra/f_001.avif');
+      const r = await fetch('assets/seq/s1qa/f_001.avif');
       if (r.ok) {
         await createImageBitmap(await r.blob());
-        return { dirs: ['s1ra', 's2ra', 's3ra'], ext: 'avif', frames: 60 };
+        return { dirs: ['s1qa', 's2qa', 's3qa'], ext: 'avif', frames: 60 };
       }
     } catch (e) { /* webp it is */ }
-    return { dirs: ['s1r', 's2r', 's3r'], ext: 'webp', frames: 60 };
+    return { dirs: ['s1q', 's2q', 's3q'], ext: 'webp', frames: 60 };
   }
   try {
     const r = await fetch('assets/seq/d1a/f_001.avif');
@@ -81,7 +81,7 @@ async function resolveSeries() {
     if (r.ok) return { dirs: ['d1', 'd2', 'df', 'dfb2'], ext: 'webp', frames: 80, bridge: 19 };
   } catch (e) { /* fall through */ }
   // ponytail: desktop 2K set still extracting - portrait set as interim
-  return { dirs: ['s1r', 's2r', 's3r'], ext: 'webp', frames: 60 };
+  return { dirs: ['s1q', 's2q', 's3q'], ext: 'webp', frames: 60 };
 }
 
 // ---- film plan --------------------------------------------------------------
