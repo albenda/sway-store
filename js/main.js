@@ -215,14 +215,17 @@ function buildPlanV2(r) {
 // the OLD 3-chapter journey expressed in the same plan shape
 function buildPlanOld(S) {
   const F = S.frames - 1;
-  const fadePx = (S.wide ? 220 : 60) * M;
+  // fade must equal the clip overlap (60*M) or alpha pops at the cut;
+  // the wide seam is carried by the head transform, not a longer dissolve
+  const fadePx = 60 * M;
   // wide 9:16 reframes place the product slightly differently per clip; each
   // incoming clip STARTS transformed so its hammock sits exactly on the
   // outgoing clip's hammock (desktop-style product lock), then eases to
   // identity while the world settles. Mid-clip = untouched full frame.
-  // Numbers measured on the 720x1280 raws (fractions of frame).
-  const head1 = S.wide ? { px: 420 * M, sc: 1.10, dx: -0.0694, dy: -0.0484, ax: 0.500, ay: 0.5914 } : null;
-  const head2 = S.wide ? { px: 560 * M, sc: 1.652, dx: -0.0243, dy: -0.0215, ax: 0.538, ay: 0.6035 } : null;
+  // Numbers solved by gradient cross-correlation of the hammock between the
+  // outgoing clip's last frame and the incoming clip's first (1080x1920).
+  const head1 = S.wide ? { px: 420 * M, sc: 1.10, dx: -0.0083, dy: -0.0536, ax: 0.500, ay: 0.5914 } : null;
+  const head2 = S.wide ? { px: 560 * M, sc: 1.652, dx: -0.0021, dy: 0.0151, ax: 0.538, ay: 0.6035 } : null;
   const u = (k) =>
     Array.from({ length: S.frames }, (_, i) => `assets/seq/${S.dirs[k]}/f_${pad3(i + 1)}.${S.ext}`);
   // ONE continuous take: each clip CONTINUES the camera arc from the exact

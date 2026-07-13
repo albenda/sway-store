@@ -80,13 +80,15 @@ export function createFilm(canvas, series, cap) {
       const dw = bmp.width * s0, dh = bmp.height * s0;
       ctx.drawImage(bmp, (cw - dw) / 2, (ch - dh) / 2, dw, dh); // source-over only
     } else {
-      // seam lock: extra zoom about the product anchor + canvas-space nudge,
-      // so an incoming clip's hammock lands exactly on the outgoing one's
+      // seam lock: extra zoom about the product anchor + a nudge, so an
+      // incoming clip's hammock lands exactly on the outgoing one's.
+      // dx is in frame-width units (dw0): the needed shift scales with the
+      // drawn frame, so narrow phones match the 1080px-wide solve exactly
       const s = s0 * tf.sc;
       const dw0 = bmp.width * s0, dh0 = bmp.height * s0;
       const dw = bmp.width * s, dh = bmp.height * s;
       const ax = tf.ax ?? 0.5, ay = tf.ay ?? 0.5;
-      const anchorX = (cw - dw0) / 2 + ax * dw0 + tf.dx * cw;
+      const anchorX = (cw - dw0) / 2 + ax * dw0 + tf.dx * dw0;
       const anchorY = (ch - dh0) / 2 + ay * dh0 + tf.dy * ch;
       ctx.drawImage(bmp, anchorX - ax * dw, anchorY - ay * dh, dw, dh);
     }
