@@ -64,14 +64,30 @@ const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const pad3 = (n) => String(n).padStart(3, '0');
 let mixEase = (t) => t; // replaced with power1.inOut once gsap is up
 
+// ---- frame CDN ---------------------------------------------------------------
+// GitHub Pages throttles to ~200KB/s per connection from IL - scene 1 alone
+// took ~20s and the film read as "stuck". jsDelivr serves the SAME repo 3-4x
+// faster AND from a second hostname (its own connection pool, parallel to the
+// page's). Frame dirs are immutable by convention (new content -> new dir
+// name), so @main is cache-safe. Same-origin fallback if jsDelivr is down.
+const CDN = 'https://cdn.jsdelivr.net/gh/albenda/sway-store@main/';
+let seqBase = CDN;
+async function pickSeqBase() {
+  try {
+    const r = await fetch(`${CDN}assets/seq/s1w/f_001.webp`, { method: 'HEAD' });
+    if (!r.ok) seqBase = '';
+  } catch (e) { seqBase = ''; }
+}
+
 // ---- old 3-chapter series (fallback when there is no manifest) --------------
 // mobile: paid-for native portrait 720x1280 x60. desktop: 1600x900 x80 under
 // seq/d1-3 (webp) with optional AVIF variants under d1a-3a probed at runtime.
 async function resolveSeries() {
+  await pickSeqBase();
   if (isMobile && isWide) {
     // uncropped vertical expand-reframes of the exact desktop takes (2K)
     try {
-      const r = await fetch('assets/seq/s1wa/f_001.avif');
+      const r = await fetch(`${seqBase}assets/seq/s1wa/f_001.avif`);
       if (r.ok) {
         await createImageBitmap(await r.blob());
         return { dirs: ['s1wa', 's2wca', 's3wca'], ext: 'avif', frames: 60, wide: true };
@@ -82,7 +98,7 @@ async function resolveSeries() {
   if (isMobile && !isCinema) {
     // iOS 16+ decodes AVIF: probe the mobile avif twins, drop to webp silently
     try {
-      const r = await fetch('assets/seq/s1qa/f_001.avif');
+      const r = await fetch(`${seqBase}assets/seq/s1qa/f_001.avif`);
       if (r.ok) {
         await createImageBitmap(await r.blob());
         return { dirs: ['s1qa', 's2qa', 's3qa'], ext: 'avif', frames: 60 };
@@ -91,14 +107,14 @@ async function resolveSeries() {
     return { dirs: ['s1q', 's2q', 's3q'], ext: 'webp', frames: 60 };
   }
   try {
-    const r = await fetch('assets/seq/d1a/f_001.avif');
+    const r = await fetch(`${seqBase}assets/seq/d1a/f_001.avif`);
     if (r.ok) {
       await createImageBitmap(await r.blob()); // decodability probe, not just 200
       return { dirs: ['d1a', 'd2a', 'dfa', 'dfba2'], ext: 'avif', frames: 80, bridge: 19 };
     }
   } catch (e) { /* no avif yet: fall through silently */ }
   try {
-    const r = await fetch('assets/seq/d1/f_001.webp');
+    const r = await fetch(`${seqBase}assets/seq/d1/f_001.webp`);
     if (r.ok) return { dirs: ['d1', 'd2', 'df', 'dfb2'], ext: 'webp', frames: 80, bridge: 19 };
   } catch (e) { /* fall through */ }
   // ponytail: desktop 2K set still extracting - portrait set as interim
@@ -161,7 +177,7 @@ function buildPlanV2(r) {
     x = x0 + len;
   };
   const segUrls = (g) =>
-    Array.from({ length: g.frames }, (_, i) => `assets/seq/${g.dir}/f_${pad3(i + 1)}.${g.ext}`);
+    Array.from({ length: g.frames }, (_, i) => `${seqBase}assets/seq/${g.dir}/f_${pad3(i + 1)}.${g.ext}`);
 
   const dis0 = x;
   for (const g of r.dis) push(add(segUrls(g)), g.frames, g.frames * 15 * M, true);
@@ -227,7 +243,7 @@ function buildPlanOld(S) {
   // slow camera pull-back, and the clip ends on the full raw frame.
   const fadePx = 60 * M;
   const u = (k) =>
-    Array.from({ length: S.frames }, (_, i) => `assets/seq/${S.dirs[k]}/f_${pad3(i + 1)}.${S.ext}`);
+    Array.from({ length: S.frames }, (_, i) => `${seqBase}assets/seq/${S.dirs[k]}/f_${pad3(i + 1)}.${S.ext}`);
   // ONE continuous take: each clip CONTINUES the camera arc from the exact
   // frame the previous one ended on (match-cut chain). The 60px fade sits on
   // pixel-matched compositions - it softens residue, it is not a "transition".
@@ -274,7 +290,7 @@ async function resolveV2() {
     const probe = ids.find((id) => man[id] && man[id].avif);
     if (probe) {
       try {
-        const r = await fetch(`assets/seq/${probe}a/f_001.avif`);
+        const r = await fetch(`${seqBase}assets/seq/${probe}a/f_001.avif`);
         if (r.ok) { await createImageBitmap(await r.blob()); avifOk = true; }
       } catch (e) { /* webp it is */ }
     }
