@@ -365,8 +365,21 @@
         })
       });
       var d = await r.json();
-      if (r.ok && d && d.order_no) { showPay(d); return; }
-      alert('משהו השתבש בקליטת ההזמנה. נסו שוב בעוד רגע.');
+      if (r.ok && d && d.order_no) {
+        if (st.group) { showPay(d); return; } // group buy: manual coordination flow
+        // standard order: SUMIT (Upay) hosted payment page - card, Bit, up to 3 payments
+        btn.textContent = 'עוברים לתשלום מאובטח…';
+        var pr = await fetch(SUPABASE_URL + '/functions/v1/sumit-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_no: d.order_no })
+        });
+        var pd = await pr.json();
+        if (pr.ok && pd && pd.url) { location.href = pd.url; return; }
+        alert('יצירת דף התשלום נכשלה. נסו שוב בעוד רגע.' + (pd && pd.message ? '\n' + pd.message : ''));
+      } else {
+        alert('משהו השתבש בקליטת ההזמנה. נסו שוב בעוד רגע.');
+      }
     } catch (e) {
       alert('שגיאת רשת. בדקו את החיבור ונסו שוב.');
     }
