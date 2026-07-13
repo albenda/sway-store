@@ -12,6 +12,10 @@ const isCoarse = matchMedia('(pointer: coarse)').matches
 // ?cinema=1 - phone plays the DESKTOP frame series full-screen (cover crop):
 // identical camera motion and world to the computer, cropped to portrait.
 const isCinema = new URLSearchParams(location.search).has('cinema');
+// ?wide=1 - phone plays the RAW 9:16 expand-reframes of the desktop takes:
+// full original width preserved, sky/ground extended, no zoom. Candidate to
+// become the mobile default once the owner approves it on a real device.
+const isWide = new URLSearchParams(location.search).has('wide');
 const isMobile = matchMedia('(max-width: 820px)').matches;
 const isFine = matchMedia('(pointer: fine)').matches;
 
@@ -61,6 +65,17 @@ let mixEase = (t) => t; // replaced with power1.inOut once gsap is up
 // mobile: paid-for native portrait 720x1280 x60. desktop: 1600x900 x80 under
 // seq/d1-3 (webp) with optional AVIF variants under d1a-3a probed at runtime.
 async function resolveSeries() {
+  if (isMobile && isWide) {
+    // uncropped vertical expand-reframes of the exact desktop takes (2K)
+    try {
+      const r = await fetch('assets/seq/s1wa/f_001.avif');
+      if (r.ok) {
+        await createImageBitmap(await r.blob());
+        return { dirs: ['s1wa', 's2wa', 's3wa'], ext: 'avif', frames: 60, wide: true };
+      }
+    } catch (e) { /* webp it is */ }
+    return { dirs: ['s1w', 's2w', 's3w'], ext: 'webp', frames: 60, wide: true };
+  }
   if (isMobile && !isCinema) {
     // iOS 16+ decodes AVIF: probe the mobile avif twins, drop to webp silently
     try {
@@ -188,6 +203,7 @@ function buildPlanV2(r) {
 // the OLD 3-chapter journey expressed in the same plan shape
 function buildPlanOld(S) {
   const F = S.frames - 1;
+  const fadePx = (S.wide ? 220 : 60) * M;
   const u = (k) =>
     Array.from({ length: S.frames }, (_, i) => `assets/seq/${S.dirs[k]}/f_${pad3(i + 1)}.${S.ext}`);
   // ONE continuous take: each clip CONTINUES the camera arc from the exact
@@ -197,12 +213,12 @@ function buildPlanOld(S) {
     series: [u(0), u(1), u(2)],
     clips: [
       { idx: 0, s: 0, x0: 0, x1: 2400 * M, f0: 0, f1: F, fade: 0 },
-      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: 60 * M },
+      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: fadePx },
       // beach -> forest: the SAME stitch as balcony -> beach. The forest orbit
       // was generated as a direct continuation of the beach's final frame
       // (env-swap, product pixel-identical, same camera), so the orbit never
       // stops - a short 60px fade on matched frames and the world has changed.
-      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: 60 * M },
+      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: fadePx },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
     texts: [
