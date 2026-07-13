@@ -1,9 +1,9 @@
 /* Sway store — shared styles for collection + product pages. Matches the landing design system. */
 :root{
-  --paper:#f6f6f3; --paper-2:#eceee9; --ink:#15211e; --ink-soft:#4d5b58;
-  --teal:#1d6f66; --teal-d:#0f4a43; --teal-dd:#0a3a34; --coral:#ec5b3b; --coral-d:#d24a2d;
-  --cream:#f4efe4; --blue:#3a6ea5; --brown:#a9824f; --line:#e2e3dd;
-  --maxw:1180px; --r:18px; --shadow:0 24px 60px -30px rgba(15,33,30,.45); --ease:cubic-bezier(.22,1,.36,1);
+  --paper:#f6f6f3; --paper-2:#eceee9; --ink:#16222b; --ink-soft:#4d5a64;
+  --teal:#1583a5; --teal-d:#0e5f79; --teal-dd:#0a4a60; --coral:#ec5b3b; --coral-d:#d24a2d;
+  --cream:#f4efe4; --blue:#3a6ea5; --brown:#a9824f; --line:#e0e4e6;
+  --maxw:1180px; --r:18px; --shadow:0 24px 60px -30px rgba(15,28,38,.45); --ease:cubic-bezier(.22,1,.36,1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}

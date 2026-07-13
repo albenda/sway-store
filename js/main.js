@@ -52,22 +52,12 @@ const SCRUB = isCoarse ? true : 0.7;
 // cap by pointer too (iOS jetsam is real)
 const CAP = isMobile ? 20 : (isCoarse ? 24 : 48);
 
-// mini-CTA from the very first scroll (works in every tier, incl. posters)
-// + browser chrome tint: Safari paints its top/bottom bars with theme-color,
-// so it follows the film's sky per chapter (a fixed dark value reads as
-// "green bars" around the film) and drops to paper once the film is done
-const themeMeta = document.querySelector('meta[name="theme-color"]');
-const CHROME_TINT = [
-  [0, '#5a91cf'],                      // balcony sky
-  [2340 * M, '#7c8fa6'],               // beach sky
-  [4680 * M, '#6d756e'],               // forest canopy
-  [7680 * M + innerHeight, '#f5f1ea'], // film scrolled away -> paper
-];
+// mini-CTA from the very first scroll (works in every tier, incl. posters).
+// NO theme-color anywhere: with viewport-fit=cover and none set, iOS Safari
+// blurs its bars translucently OVER the film (owner wants true full-bleed;
+// any solid bar color read as a frame around the film)
 addEventListener('scroll', () => {
   document.body.classList.toggle('scrolled', scrollY > 1);
-  let tint = CHROME_TINT[0][1];
-  for (const [at, col] of CHROME_TINT) if (scrollY >= at) tint = col;
-  if (themeMeta && themeMeta.content !== tint) themeMeta.content = tint;
 }, { passive: true });
 
 const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
@@ -215,9 +205,9 @@ function buildPlanV2(r) {
 
   // the world grades itself: balcony teal -> beach coral -> desert night
   if (bag1 > bag0) {
-    plan.tints.push({ at: bag0, px: bag1 - bag0, from: ['#1d6f66', 0.12], to: ['#ec5b3b', 0.05] });
+    plan.tints.push({ at: bag0, px: bag1 - bag0, from: ['#1583a5', 0.12], to: ['#ec5b3b', 0.05] });
   } else if (b1 > b0) {
-    plan.tints.push({ at: Math.max(0, b0 - 250 * M), px: 500 * M, from: ['#1d6f66', 0.12], to: ['#ec5b3b', 0.05] });
+    plan.tints.push({ at: Math.max(0, b0 - 250 * M), px: 500 * M, from: ['#1583a5', 0.12], to: ['#ec5b3b', 0.05] });
   }
   if (orb[1] !== undefined) {
     plan.tints.push({ at: Math.max(0, orb[1] - 350 * M), px: 500 * M, from: ['#ec5b3b', 0.05], to: ['#0b1b19', 0.12] });
@@ -253,13 +243,15 @@ function buildPlanOld(S) {
       { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: fadePx },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
+    // wide (phone) keeps each caption on screen longer - flick-scrolling on
+    // touch crosses the same px window much faster than a desktop wheel
     texts: [
-      { beat: 'beach', enter: 3000 * M, exit: 4100 * M },
-      { beat: 'desert', enter: 5400 * M, exit: 6500 * M },
+      { beat: 'beach', enter: 2900 * M, exit: (S.wide ? 4550 : 4100) * M },
+      { beat: 'desert', enter: 5300 * M, exit: (S.wide ? 6900 : 6500) * M },
     ],
     tints: [
-      { at: 2200 * M, px: 400 * M, from: ['#1d6f66', 0.12], to: ['#ec5b3b', 0.05] },
-      { at: 4550 * M, px: 500 * M, from: ['#ec5b3b', 0.05], to: ['#11514a', 0.08] },
+      { at: 2200 * M, px: 400 * M, from: ['#1583a5', 0.12], to: ['#ec5b3b', 0.05] },
+      { at: 4550 * M, px: 500 * M, from: ['#ec5b3b', 0.05], to: ['#0e5f79', 0.08] },
     ],
     settleAt: 7080 * M,
     total: 7680 * M,
