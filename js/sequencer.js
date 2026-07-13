@@ -68,16 +68,28 @@ export function createFilm(canvas, series, cap) {
     }
   }
 
-  function drawCover(bmp, alpha) {
+  function drawCover(bmp, alpha, tf) {
     if (bmp.width !== srcW || bmp.height !== srcH) {
       srcW = bmp.width; srcH = bmp.height;
       resize(); // only when source size changes: no layout read per frame
     }
     const cw = canvas.width, ch = canvas.height;
-    const s = Math.max(cw / bmp.width, ch / bmp.height);
-    const dw = bmp.width * s, dh = bmp.height * s;
+    const s0 = Math.max(cw / bmp.width, ch / bmp.height);
     ctx.globalAlpha = alpha;
-    ctx.drawImage(bmp, (cw - dw) / 2, (ch - dh) / 2, dw, dh); // source-over only
+    if (!tf || (tf.sc === 1 && !tf.dx && !tf.dy)) {
+      const dw = bmp.width * s0, dh = bmp.height * s0;
+      ctx.drawImage(bmp, (cw - dw) / 2, (ch - dh) / 2, dw, dh); // source-over only
+    } else {
+      // seam lock: extra zoom about the product anchor + canvas-space nudge,
+      // so an incoming clip's hammock lands exactly on the outgoing one's
+      const s = s0 * tf.sc;
+      const dw0 = bmp.width * s0, dh0 = bmp.height * s0;
+      const dw = bmp.width * s, dh = bmp.height * s;
+      const ax = tf.ax ?? 0.5, ay = tf.ay ?? 0.5;
+      const anchorX = (cw - dw0) / 2 + ax * dw0 + tf.dx * cw;
+      const anchorY = (ch - dh0) / 2 + ay * dh0 + tf.dy * ch;
+      ctx.drawImage(bmp, anchorX - ax * dw, anchorY - ay * dh, dw, dh);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -90,8 +102,10 @@ export function createFilm(canvas, series, cap) {
       i: Math.max(0, Math.min(series[l.s].length - 1, Math.round(l.f))),
       a: l.a,
       d: l.d || 1,
+      tf: l.tf || null,
     }));
-    const key = ls.map((l) => `${l.s}:${l.i}:${l.a.toFixed(2)}`).join('|');
+    const key = ls.map((l) =>
+      `${l.s}:${l.i}:${l.a.toFixed(2)}:${l.tf ? l.tf.sc.toFixed(3) + ':' + l.tf.dx.toFixed(3) + ':' + l.tf.dy.toFixed(3) : ''}`).join('|');
     if (key === lastKey) return;
 
     // decode window per active layer, oriented by playback direction;
@@ -128,10 +142,10 @@ export function createFilm(canvas, series, cap) {
     };
 
     if (!ready[0]) { retryWhenDecoded(ls[0]); return; } // base not warm yet
-    drawCover(ready[0], 1);
+    drawCover(ready[0], 1, ls[0].tf);
     let complete = true;
     for (let j = 1; j < ls.length; j++) {
-      if (ready[j]) drawCover(ready[j], ls[j].a);
+      if (ready[j]) drawCover(ready[j], ls[j].a, ls[j].tf);
       else { complete = false; retryWhenDecoded(ls[j]); } // incoming lands -> dissolve repaints
     }
     // an incomplete draw must NOT satisfy the skip-check, or the dissolve

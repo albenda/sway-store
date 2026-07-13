@@ -118,11 +118,23 @@ function layersAt(plan, px) {
     const m0 = c.x0 + (c.lead || 0);
     const m1 = c.xm || c.x1;
     const t = Math.min(1, Math.max(0, (px - m0) / (m1 - m0)));
+    let tf = null;
+    if (c.head && px < c.x0 + c.head.px) {
+      const q = Math.max(0, (px - c.x0) / c.head.px);
+      const rem = (1 - q) * (1 - q); // ease-out: most of the release is late
+      tf = {
+        sc: 1 + (c.head.sc - 1) * rem,
+        dx: c.head.dx * rem,
+        dy: c.head.dy * rem,
+        ax: c.head.ax, ay: c.head.ay,
+      };
+    }
     L.push({
       s: c.s,
       f: c.f0 + (c.f1 - c.f0) * t,
       d: c.f1 >= c.f0 ? 1 : -1,
       a: L.length && c.fade ? mixEase(Math.min(1, (px - c.x0) / c.fade)) : 1,
+      tf,
       c,
     });
   }
@@ -204,6 +216,13 @@ function buildPlanV2(r) {
 function buildPlanOld(S) {
   const F = S.frames - 1;
   const fadePx = (S.wide ? 220 : 60) * M;
+  // wide 9:16 reframes place the product slightly differently per clip; each
+  // incoming clip STARTS transformed so its hammock sits exactly on the
+  // outgoing clip's hammock (desktop-style product lock), then eases to
+  // identity while the world settles. Mid-clip = untouched full frame.
+  // Numbers measured on the 720x1280 raws (fractions of frame).
+  const head1 = S.wide ? { px: 420 * M, sc: 1.10, dx: -0.0694, dy: -0.0484, ax: 0.500, ay: 0.5914 } : null;
+  const head2 = S.wide ? { px: 560 * M, sc: 1.652, dx: -0.0243, dy: -0.0215, ax: 0.538, ay: 0.6035 } : null;
   const u = (k) =>
     Array.from({ length: S.frames }, (_, i) => `assets/seq/${S.dirs[k]}/f_${pad3(i + 1)}.${S.ext}`);
   // ONE continuous take: each clip CONTINUES the camera arc from the exact
@@ -213,12 +232,12 @@ function buildPlanOld(S) {
     series: [u(0), u(1), u(2)],
     clips: [
       { idx: 0, s: 0, x0: 0, x1: 2400 * M, f0: 0, f1: F, fade: 0 },
-      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: fadePx },
+      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: fadePx, head: head1 },
       // beach -> forest: the SAME stitch as balcony -> beach. The forest orbit
       // was generated as a direct continuation of the beach's final frame
       // (env-swap, product pixel-identical, same camera), so the orbit never
       // stops - a short 60px fade on matched frames and the world has changed.
-      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: fadePx },
+      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: fadePx, head: head2 },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
     texts: [
