@@ -426,13 +426,16 @@ async function init() {
   }
 
   if (isCoarse) {
-    const MAXV = 2600 * M; // px/s chase cap in plan-px; keeps up with freer glides
+    // owner felt the film "dragging" behind the finger: k=8 + 2600px/s cap
+    // left it a full second behind after a flick. k=13 + 4400px/s tracks the
+    // finger tightly while still absorbing the teleport of a hard flick.
+    const MAXV = 4400 * M; // px/s chase cap in plan-px
     gsap.ticker.add((_t, dtMs) => {
       if (renderMode !== 'canvas') return;
       const dt = Math.min(0.05, dtMs / 1000); // clamp: background-tab jumps
       let diff = st.px - shown.px;
       if (!diff) return;
-      let step = diff * (1 - Math.exp(-8 * dt)); // k = 8/s, fps-independent
+      let step = diff * (1 - Math.exp(-13 * dt)); // k = 13/s, fps-independent
       const cap = MAXV * dt;
       if (Math.abs(step) > cap) step = Math.sign(step) * cap;
       shown.px = Math.abs(diff) < 0.25 ? st.px : shown.px + step;
