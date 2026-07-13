@@ -12,10 +12,10 @@ const isCoarse = matchMedia('(pointer: coarse)').matches
 // ?cinema=1 - phone plays the DESKTOP frame series full-screen (cover crop):
 // identical camera motion and world to the computer, cropped to portrait.
 const isCinema = new URLSearchParams(location.search).has('cinema');
-// ?wide=1 - phone plays the RAW 9:16 expand-reframes of the desktop takes:
-// full original width preserved, sky/ground extended, no zoom. Candidate to
-// become the mobile default once the owner approves it on a real device.
-const isWide = new URLSearchParams(location.search).has('wide');
+// wide = the mobile DEFAULT: 9:16 expand-reframes of the exact desktop takes
+// (seam alignment baked into s2wb/s3wb), full original width, no zoom.
+// ?wide=0 opts out to the old cropped mobile series for comparison.
+const isWide = new URLSearchParams(location.search).get('wide') !== '0';
 const isMobile = matchMedia('(max-width: 820px)').matches;
 const isFine = matchMedia('(pointer: fine)').matches;
 
@@ -71,10 +71,10 @@ async function resolveSeries() {
       const r = await fetch('assets/seq/s1wa/f_001.avif');
       if (r.ok) {
         await createImageBitmap(await r.blob());
-        return { dirs: ['s1wa', 's2wba', 's3wba'], ext: 'avif', frames: 60, wide: true };
+        return { dirs: ['s1wa', 's2wca', 's3wca'], ext: 'avif', frames: 60, wide: true };
       }
     } catch (e) { /* webp it is */ }
-    return { dirs: ['s1w', 's2wb', 's3wb'], ext: 'webp', frames: 60, wide: true };
+    return { dirs: ['s1w', 's2wc', 's3wc'], ext: 'webp', frames: 60, wide: true };
   }
   if (isMobile && !isCinema) {
     // iOS 16+ decodes AVIF: probe the mobile avif twins, drop to webp silently
@@ -216,11 +216,12 @@ function buildPlanV2(r) {
 function buildPlanOld(S) {
   const F = S.frames - 1;
   // fade must equal the clip overlap (60*M) or alpha pops at the cut.
-  // wide seams need NO runtime transform: alignment is baked into the
-  // s2wb/s3wb frames themselves (constant crop per clip, solved by
-  // cross-correlating the hammock against the outgoing clip's last frame),
-  // so the wide film is structurally identical to the desktop stitch:
-  // matched frames at the cut + short fade. No animated zoom.
+  // wide seams need NO runtime transform: s2wc/s3wc frames are baked with a
+  // smoothstep DRIFT - frame 1 crop-matches the outgoing clip's last frame
+  // (hammock cross-correlation solve), then the crop releases to the raw
+  // composition across the WHOLE clip with zero velocity at both ends. The
+  // cut itself is motionless (desktop-identical); the release reads as a
+  // slow camera pull-back, and the clip ends on the full raw frame.
   const fadePx = 60 * M;
   const u = (k) =>
     Array.from({ length: S.frames }, (_, i) => `assets/seq/${S.dirs[k]}/f_${pad3(i + 1)}.${S.ext}`);
