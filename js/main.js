@@ -71,10 +71,10 @@ async function resolveSeries() {
       const r = await fetch('assets/seq/s1wa/f_001.avif');
       if (r.ok) {
         await createImageBitmap(await r.blob());
-        return { dirs: ['s1wa', 's2wa', 's3wa'], ext: 'avif', frames: 60, wide: true };
+        return { dirs: ['s1wa', 's2wba', 's3wba'], ext: 'avif', frames: 60, wide: true };
       }
     } catch (e) { /* webp it is */ }
-    return { dirs: ['s1w', 's2w', 's3w'], ext: 'webp', frames: 60, wide: true };
+    return { dirs: ['s1w', 's2wb', 's3wb'], ext: 'webp', frames: 60, wide: true };
   }
   if (isMobile && !isCinema) {
     // iOS 16+ decodes AVIF: probe the mobile avif twins, drop to webp silently
@@ -215,17 +215,13 @@ function buildPlanV2(r) {
 // the OLD 3-chapter journey expressed in the same plan shape
 function buildPlanOld(S) {
   const F = S.frames - 1;
-  // fade must equal the clip overlap (60*M) or alpha pops at the cut;
-  // the wide seam is carried by the head transform, not a longer dissolve
+  // fade must equal the clip overlap (60*M) or alpha pops at the cut.
+  // wide seams need NO runtime transform: alignment is baked into the
+  // s2wb/s3wb frames themselves (constant crop per clip, solved by
+  // cross-correlating the hammock against the outgoing clip's last frame),
+  // so the wide film is structurally identical to the desktop stitch:
+  // matched frames at the cut + short fade. No animated zoom.
   const fadePx = 60 * M;
-  // wide 9:16 reframes place the product slightly differently per clip; each
-  // incoming clip STARTS transformed so its hammock sits exactly on the
-  // outgoing clip's hammock (desktop-style product lock), then eases to
-  // identity while the world settles. Mid-clip = untouched full frame.
-  // Numbers solved by gradient cross-correlation of the hammock between the
-  // outgoing clip's last frame and the incoming clip's first (1080x1920).
-  const head1 = S.wide ? { px: 420 * M, sc: 1.10, dx: -0.0083, dy: -0.0536, ax: 0.500, ay: 0.5914 } : null;
-  const head2 = S.wide ? { px: 560 * M, sc: 1.652, dx: -0.0021, dy: 0.0151, ax: 0.538, ay: 0.6035 } : null;
   const u = (k) =>
     Array.from({ length: S.frames }, (_, i) => `assets/seq/${S.dirs[k]}/f_${pad3(i + 1)}.${S.ext}`);
   // ONE continuous take: each clip CONTINUES the camera arc from the exact
@@ -235,12 +231,12 @@ function buildPlanOld(S) {
     series: [u(0), u(1), u(2)],
     clips: [
       { idx: 0, s: 0, x0: 0, x1: 2400 * M, f0: 0, f1: F, fade: 0 },
-      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: fadePx, head: head1 },
+      { idx: 1, s: 1, x0: 2340 * M, x1: 4740 * M, f0: 0, f1: F, fade: fadePx },
       // beach -> forest: the SAME stitch as balcony -> beach. The forest orbit
       // was generated as a direct continuation of the beach's final frame
       // (env-swap, product pixel-identical, same camera), so the orbit never
       // stops - a short 60px fade on matched frames and the world has changed.
-      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: fadePx, head: head2 },
+      { idx: 2, s: 2, x0: 4680 * M, x1: 7080 * M, f0: 0, f1: F, fade: fadePx },
     ],
     // balcony chapter rides on the hero copy alone (owner deleted its old line)
     texts: [
