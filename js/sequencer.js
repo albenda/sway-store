@@ -9,8 +9,7 @@ import { getBlob, ensure } from './preloader.js';
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 const AHEAD = 10, BEHIND = 4; // decode window, oriented by travel direction
 
-export function createFilm(canvas, series, cap, opts = {}) {
-  const fit = opts.fit || 'cover';
+export function createFilm(canvas, series, cap) {
   const ctx = canvas.getContext('2d');
   const cache = new Map(); // url -> ImageBitmap | Promise<ImageBitmap>
   let srcW = 0, srcH = 0;
@@ -21,11 +20,11 @@ export function createFilm(canvas, series, cap, opts = {}) {
   let firstDraw = null;
 
   function resize() {
-    // backing store: element size * DPR, but never above source resolution
-    let w = Math.round(canvas.clientWidth * DPR);
-    let h = Math.round(canvas.clientHeight * DPR);
-    if (srcW && w > srcW) { h = Math.round(h * srcW / w); w = srcW; }
-    if (srcH && h > srcH) { w = Math.round(w * srcH / h); h = srcH; }
+    // backing store: element size * DPR. No source clamp - a portrait screen
+    // cover-cropping a landscape source needs the full element resolution,
+    // and the old clamp (900px tall) blurred every retina phone.
+    const w = Math.round(canvas.clientWidth * DPR);
+    const h = Math.round(canvas.clientHeight * DPR);
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   }
   window.addEventListener('resize', () => {
@@ -75,9 +74,7 @@ export function createFilm(canvas, series, cap, opts = {}) {
       resize(); // only when source size changes: no layout read per frame
     }
     const cw = canvas.width, ch = canvas.height;
-    const s = fit === 'contain'
-      ? Math.min(cw / bmp.width, ch / bmp.height)
-      : Math.max(cw / bmp.width, ch / bmp.height);
+    const s = Math.max(cw / bmp.width, ch / bmp.height);
     const dw = bmp.width * s, dh = bmp.height * s;
     ctx.globalAlpha = alpha;
     ctx.drawImage(bmp, (cw - dw) / 2, (ch - dh) / 2, dw, dh); // source-over only
@@ -131,7 +128,6 @@ export function createFilm(canvas, series, cap, opts = {}) {
     };
 
     if (!ready[0]) { retryWhenDecoded(ls[0]); return; } // base not warm yet
-    if (fit === 'contain') ctx.clearRect(0, 0, canvas.width, canvas.height); // letterbox bars
     drawCover(ready[0], 1);
     let complete = true;
     for (let j = 1; j < ls.length; j++) {

@@ -9,8 +9,8 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // ?coarse=1 forces the touch code path for desktop debugging of iOS behavior
 const isCoarse = matchMedia('(pointer: coarse)').matches
   || new URLSearchParams(location.search).has('coarse');
-// ?cinema=1 - phone plays the DESKTOP frames letterboxed (identical film,
-// widescreen). Flag for A/B on a real device; flip to default once approved.
+// ?cinema=1 - phone plays the DESKTOP frame series full-screen (cover crop):
+// identical camera motion and world to the computer, cropped to portrait.
 const isCinema = new URLSearchParams(location.search).has('cinema');
 const isMobile = matchMedia('(max-width: 820px)').matches;
 const isFine = matchMedia('(pointer: fine)').matches;
@@ -391,8 +391,7 @@ async function init() {
   window.__swayPlan = plan; // debug handle (map is data now; inspectable)
 
   if ('createImageBitmap' in window) {
-    film = createFilm(document.querySelector('.journey__canvas'), plan.series, CAP,
-      { fit: isCinema ? 'contain' : 'cover' });
+    film = createFilm(document.querySelector('.journey__canvas'), plan.series, CAP);
     film.onFirstDraw = () =>
       gsap.to('.journey__canvas', { opacity: 1, duration: 0.45, ease: 'sway' });
   }
