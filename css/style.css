@@ -260,7 +260,9 @@ html:not(.js) .mini-cta { opacity: 1; visibility: visible; pointer-events: auto;
 .journey { position: relative; }
 .journey__stage {
   position: relative;
-  height: 100svh;
+  /* lvh, not svh: the canvas must extend UNDER Safari's collapsible bars so
+     they blur over the film (true full-bleed) instead of framing it */
+  height: 100lvh;
   overflow: hidden;
   background: var(--ink);
 }
