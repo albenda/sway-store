@@ -53,8 +53,21 @@ const SCRUB = isCoarse ? true : 0.7;
 const CAP = isMobile ? 20 : (isCoarse ? 24 : 48);
 
 // mini-CTA from the very first scroll (works in every tier, incl. posters)
+// + browser chrome tint: Safari paints its top/bottom bars with theme-color,
+// so it follows the film's sky per chapter (a fixed dark value reads as
+// "green bars" around the film) and drops to paper once the film is done
+const themeMeta = document.querySelector('meta[name="theme-color"]');
+const CHROME_TINT = [
+  [0, '#5a91cf'],                      // balcony sky
+  [2340 * M, '#7c8fa6'],               // beach sky
+  [4680 * M, '#6d756e'],               // forest canopy
+  [7680 * M + innerHeight, '#f5f1ea'], // film scrolled away -> paper
+];
 addEventListener('scroll', () => {
   document.body.classList.toggle('scrolled', scrollY > 1);
+  let tint = CHROME_TINT[0][1];
+  for (const [at, col] of CHROME_TINT) if (scrollY >= at) tint = col;
+  if (themeMeta && themeMeta.content !== tint) themeMeta.content = tint;
 }, { passive: true });
 
 const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
