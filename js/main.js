@@ -9,6 +9,9 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // ?coarse=1 forces the touch code path for desktop debugging of iOS behavior
 const isCoarse = matchMedia('(pointer: coarse)').matches
   || new URLSearchParams(location.search).has('coarse');
+// ?cinema=1 - phone plays the DESKTOP frames letterboxed (identical film,
+// widescreen). Flag for A/B on a real device; flip to default once approved.
+const isCinema = new URLSearchParams(location.search).has('cinema');
 const isMobile = matchMedia('(max-width: 820px)').matches;
 const isFine = matchMedia('(pointer: fine)').matches;
 
@@ -58,7 +61,7 @@ let mixEase = (t) => t; // replaced with power1.inOut once gsap is up
 // mobile: paid-for native portrait 720x1280 x60. desktop: 1600x900 x80 under
 // seq/d1-3 (webp) with optional AVIF variants under d1a-3a probed at runtime.
 async function resolveSeries() {
-  if (isMobile) {
+  if (isMobile && !isCinema) {
     // iOS 16+ decodes AVIF: probe the mobile avif twins, drop to webp silently
     try {
       const r = await fetch('assets/seq/s1qa/f_001.avif');
@@ -388,7 +391,8 @@ async function init() {
   window.__swayPlan = plan; // debug handle (map is data now; inspectable)
 
   if ('createImageBitmap' in window) {
-    film = createFilm(document.querySelector('.journey__canvas'), plan.series, CAP);
+    film = createFilm(document.querySelector('.journey__canvas'), plan.series, CAP,
+      { fit: isCinema ? 'contain' : 'cover' });
     film.onFirstDraw = () =>
       gsap.to('.journey__canvas', { opacity: 1, duration: 0.45, ease: 'sway' });
   }
