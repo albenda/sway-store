@@ -11,7 +11,10 @@ const isCoarse = matchMedia('(pointer: coarse)').matches
   || new URLSearchParams(location.search).has('coarse');
 // ?cinema=1 - phone plays the DESKTOP frame series full-screen (cover crop):
 // identical camera motion and world to the computer, cropped to portrait.
-const isCinema = new URLSearchParams(location.search).has('cinema');
+// dead experiment, permanently off: old ?cinema=1 links used to load the
+// HEAVY desktop frame set on phones ("two different sites" feel + slow).
+// Any stale bookmark/tab now gets the normal tier.
+const isCinema = false;
 // wide = the mobile DEFAULT: 9:16 expand-reframes of the exact desktop takes
 // (seam alignment baked into s2wb/s3wb), full original width, no zoom.
 // ?wide=0 opts out to the old cropped mobile series for comparison.
