@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://albenda.github.io/sway-store/</loc><priority>1.0</priority></url>
-  <url><loc>https://albenda.github.io/sway-store/ar.html</loc></url>
-  <url><loc>https://albenda.github.io/sway-store/chair.html</loc></url>
-  <url><loc>https://albenda.github.io/sway-store/towel.html</loc></url>
-  <url><loc>https://albenda.github.io/sway-store/sunshade.html</loc></url>
-  <url><loc>https://albenda.github.io/sway-store/shipping.html</loc></url>
-  <url><loc>https://albenda.github.io/sway-store/returns.html</loc></url>
-  <url><loc>https://albenda.github.io/sway-store/terms.html</loc></url>
+  <url><loc>https://albenda.github.io/sway-store/</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/about.html</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/care.html</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/shipping.html</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/returns.html</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/terms.html</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/accessibility.html</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/balcony.html</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/beach.html</loc><lastmod>2026-09-23</lastmod></url>
+  <url><loc>https://albenda.github.io/sway-store/gift.html</loc><lastmod>2026-09-23</lastmod></url>
 </urlset>
