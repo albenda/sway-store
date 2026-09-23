@@ -51,15 +51,10 @@
 
   /* ================= checkout dialog ================= */
   const dlg = document.getElementById('order-dialog');
-  const S = { step: 1, blue: 1, brown: 0, group: false, people: 3, gift: document.body.dataset.lp === 'gift', f: {}, res: null, offline: false, busy: false };
+  const S = { step: 1, blue: 1, brown: 0, group: false, people: 3, gift: document.body.dataset.lp === 'gift', f: { pickup: 'ashdod' }, res: null, offline: false, busy: false };
   const qty = () => S.blue + S.brown;
   const GD = C.groupDiscount;
 
-  function zoneOf(city) {
-    const c = (city || '').trim();
-    if (!c || !window.SWAY_CITIES) return null;
-    return Object.keys(SWAY_CITIES).find(z => SWAY_CITIES[z].includes(c)) || null;
-  }
   // display maths only; create_order_v2 recomputes everything server-side
   function price() {
     const n = qty(), sub = n * C.price;
@@ -68,9 +63,7 @@
     const group = S.group && n >= GD.minQty ? GD.perUnit * n : 0;
     const discount = Math.max(pair, group);
     const discountKey = group > pair ? 'co.discount' : 'co.discount.pair';
-    const zone = zoneOf(S.f.city);
-    const fee = zone ? C.shipping[zone].fee : null;
-    return { n, sub, discount, discountKey, zone, fee, days: zone ? C.shipping[zone].days : null, total: sub - discount + (fee || 0) };
+    return { n, sub, discount, discountKey, total: sub - discount };   // self pickup: no delivery fee
   }
 
   // same header as the Higgsfield purchase dialog: label, serif title, product line, then the three steps
@@ -82,17 +75,11 @@
       <ol class="co-steps">${steps}</ol>`;
   }
 
-  function deliveryText(pr) {
-    if (!pr.zone) return S.step === 1 ? t('co.delivery.city') : t('co.delivery.tbd');
-    const when = t('co.delivery.days', { d: pr.days });
-    return pr.fee === 0 ? `${t('co.delivery.free')} · ${when}` : pr.fee == null ? t('co.delivery.tbd') : `${money(pr.fee)} · ${when}`;
-  }
-
   function summary(pr) {
     return `<div class="co-sum" data-sum>
         <div><span>${pr.n} × ${t('sticky.name')}</span><span><bdi><s>${money(pr.n * C.anchor)}</s></bdi> <bdi>${money(pr.sub)}</bdi></span></div>
         ${pr.discount ? `<div class="co-disc"><span>${t(pr.discountKey)}</span><span>−${money(pr.discount)}</span></div>` : ''}
-        <div><span>${t('co.delivery')}</span><span>${deliveryText(pr)}</span></div>
+        <div><span>${t('co.pickup.row')}</span><span>${t('co.free')}</span></div>
         <div class="is-total"><span>${t('co.total')}</span><span>${money(pr.total)}</span></div>
       </div>`;
   }
@@ -129,10 +116,11 @@
     return `<label class="field" data-field="${name}"><span>${t(label)}</span>${hint ? `<small>${hint}</small>` : ''}${tag}<p class="co-err" data-err="${name}"></p></label>`;
   }
 
-  function cityList() {
-    if (!window.SWAY_CITIES) return '';
-    const all = [...new Set(Object.values(SWAY_CITIES).flat())].sort((a, b) => a.localeCompare(b, 'he'));
-    return `<datalist id="co-cities">${all.map(c => `<option value="${esc(c)}">`).join('')}</datalist>`;
+  // Ashdod (by appointment) or Nes Ziona (the owner's father brings it over: 2-3 days)
+  function pickupChoice() {
+    return `<fieldset class="co-pickup"><legend class="co-label">${t('co.pickup')}</legend>
+      ${['ashdod', 'nesziona'].map(k => `<label class="co-opt"><input type="radio" name="pickup" value="${k}" ${S.f.pickup === k ? 'checked' : ''}>
+        <span><b>${t('pk.' + k)}</b><small>${t('pk.' + k + '.note')}</small></span></label>`).join('')}</fieldset>`;
   }
 
   function step2() {
@@ -146,13 +134,8 @@
         ${field('email', 'co.email', 'email', 'autocomplete="email" inputmode="email" dir="ltr"')}
         <div class="co-row" style="margin-bottom:10px"><label for="co-gift">${t('co.gift')}<span class="co-hint" style="display:block">${t('co.gift.desc')}</span></label>
           <input class="co-toggle" id="co-gift" type="checkbox" ${S.gift ? 'checked' : ''}></div>
-        ${S.gift ? `<div class="co-giftbox">
-          ${field('rname', 'co.rname', 'text', 'required')}
-          ${field('rphone', 'co.rphone', 'tel', 'inputmode="tel" dir="ltr" required')}
-          ${field('gnote', 'co.gnote', 'textarea', 'maxlength="300"')}
-        </div>` : ''}
-        <div class="field__grid">${field('city', S.gift ? 'co.city.gift' : 'co.city', 'text', 'list="co-cities" autocomplete="address-level2" required')}${field('address', S.gift ? 'co.address.gift' : 'co.address', 'text', 'autocomplete="street-address" required')}</div>
-        ${cityList()}
+        ${S.gift ? `<div class="co-giftbox">${field('gnote', 'co.gnote', 'textarea', 'maxlength="300"')}</div>` : ''}
+        ${pickupChoice()}
         ${field('notes', 'co.notes', 'textarea')}
         <p class="co-consent">${consent}</p>
         ${summary(price())}
@@ -163,9 +146,9 @@
 
   function orderText() {
     const colour = [S.blue ? `${S.blue} ${t('col.blue')}` : '', S.brown ? `${S.brown} ${t('col.brown')}` : ''].filter(Boolean).join(' + ');
-    let s = t('co.wa.order', { colour, qty: qty(), name: S.f.name, phone: S.f.phone, address: S.f.address, city: S.f.city });
+    let s = t('co.wa.order', { colour, qty: qty(), name: S.f.name, phone: S.f.phone, pickup: t('pk.' + S.f.pickup) });
     if (S.group) s += `\n${t('co.group')}: ${S.people}`;
-    if (S.gift) s += `\n${t('co.gift')}: ${S.f.rname}, ${S.f.rphone}${S.f.gnote ? `\n${S.f.gnote}` : ''}`;
+    if (S.gift) s += `\n${t('co.gift')}${S.f.gnote ? `: ${S.f.gnote}` : ''}`;
     if (S.f.notes) s += `\n${S.f.notes}`;
     return s;
   }
@@ -176,12 +159,8 @@
         <a class="save-selection" href="${wa(orderText())}" target="_blank" rel="noopener">${t('co.offline.btn')}${icon('up', 20, true)}</a>`;
     }
     const r = S.res;
-    const head = `${header('co.done')}<p class="co-no">${t('co.orderno')}: <b>${esc(r.order_no)}</b></p>`;
-    // shipping fee not fixed for this area yet: agree the final amount before anyone pays
-    if (r.shipping_fee == null && !S.group) {
-      return `${head}<p class="co-label">${t('co.tbd.title')}</p><p>${t('co.tbd')}</p>
-        <a class="save-selection" href="${wa(t('co.wa.tbd', { ref: `Sway ${r.order_no}`, city: S.f.city }))}" target="_blank" rel="noopener">${t('co.tbd.btn')}${icon('up', 20, true)}</a>`;
-    }
+    const head = `${header('co.done')}<p class="co-no">${t('co.orderno')}: <b>${esc(r.order_no)}</b></p>
+      <p class="co-hint co-pickup-done"><b>${t('pk.' + S.f.pickup)}.</b> ${t('pk.' + S.f.pickup + '.after')}</p>`;
     if (!S.group) {
       const ref = `Sway ${r.order_no}`;
       return `${head}<p class="co-label">${t('co.pay.title')}</p>${payCard(r.amount, ref)}
@@ -196,7 +175,7 @@
         : `<a class="btn btn--line" href="${wa(t('co.group.msg', { amount: s.amount, link }), '')}" target="_blank" rel="noopener">${t('co.group.send')}</a>${copyBtn(link)}`;
       return `<li><span><b>${who}</b><small>${money(s.amount)} · Sway ${esc(r.order_no)}-${s.n}</small></span><span class="co-actions">${act}</span></li>`;
     }).join('');
-    return `${head}${r.shipping_fee == null ? `<p class="co-hint">${t('co.tbd.group')}</p>` : ''}
+    return `${head}
       <p class="co-label">${t('co.group.title')}</p><ul class="shares">${rows}</ul>
       <a class="save-selection" href="${base}order.html?o=${r.order_token}${I18N.lang === 'en' ? '&lang=en' : ''}">${t('co.group.track')}${icon('up', 20, true)}</a>`;
   }
@@ -215,7 +194,6 @@
     Object.keys(d).forEach(k => { d[k] = String(d[k]).trim(); });
     const tel = v => (v || '').replace(/\D/g, '').replace(/^972/, '0');
     d.phone = tel(d.phone);
-    if ('rphone' in d) d.rphone = tel(d.rphone);
     return d;
   }
 
@@ -225,11 +203,8 @@
       name: d.name.length < 2 && 'co.err.name',
       phone: !/^05\d{8}$/.test(d.phone) && 'co.err.phone',
       email: d.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email) && 'co.err.email',
-      rname: S.gift && (d.rname || '').length < 2 && 'co.err.rname',
-      rphone: S.gift && !/^05\d{8}$/.test(d.rphone || '') && 'co.err.phone',
-      city: d.city.length < 2 && 'co.err.city',
-      address: d.address.length < 3 && 'co.err.address'
     };
+    d.pickup = d.pickup === 'nesziona' ? 'nesziona' : 'ashdod';
     S.f = d;
     let first = null;
     Object.entries(errs).forEach(([k, e]) => {
@@ -251,10 +226,9 @@
     try {
       S.res = await api('create_order_v2', {
         p_blue: S.blue, p_brown: S.brown, p_name: S.f.name, p_phone: S.f.phone,
-        p_city: S.f.city, p_address: S.f.address, p_notes: S.f.notes || null,
+        p_city: null, p_address: null, p_pickup: S.f.pickup, p_notes: S.f.notes || null,
         p_people: S.group ? S.people : null, p_lang: I18N.lang, p_email: S.f.email || null,
-        p_is_gift: S.gift, p_recipient_name: S.gift ? S.f.rname : null,
-        p_recipient_phone: S.gift ? S.f.rphone : null, p_gift_note: S.gift ? (S.f.gnote || null) : null
+        p_is_gift: S.gift, p_gift_note: S.gift ? (S.f.gnote || null) : null
       });
       S.offline = false;
       document.dispatchEvent(new CustomEvent('sway:order', { detail: { value: S.res.amount, qty: qty() } }));
@@ -290,13 +264,7 @@
     if (e.target.id === 'co-group') { S.group = e.target.checked; render(); dlg.querySelector('#co-group').focus(); }
     if (e.target.id === 'co-gift') { S.f = readForm(dlg.querySelector('form')); S.gift = e.target.checked; render(); dlg.querySelector('#co-gift').focus(); }
   });
-  // live delivery price while typing the city
-  dlg.addEventListener('input', e => {
-    if (e.target.name !== 'city') return;
-    S.f.city = e.target.value;
-    const box = dlg.querySelector('[data-sum]');
-    if (box) box.outerHTML = summary(price());
-  });
+  dlg.addEventListener('input', e => { if (e.target.name === 'pickup') S.f.pickup = e.target.value; });
   dlg.addEventListener('submit', e => { e.preventDefault(); submit(e.target); });
   document.addEventListener('langchange', () => { if (dlg.open) render(); });
 
@@ -325,7 +293,7 @@
     const state = d.status === 'confirmed' ? `<p><span class="badge badge--confirmed">${t('pay.confirmed')}</span></p>`
       : d.status === 'reported' ? `<p><span class="badge badge--reported">${t('pay.reported')}</span></p>` : '';
     app.innerHTML = `<p class="kicker">${t('pay.title')}</p><h1>${t('pay.hello')}</h1>
-      <p>${esc(d.qty)} × ${t('sticky.name')} · ${t('col.' + d.colour)}</p>
+      <p>${esc(d.qty)} × ${t('sticky.name')} · ${t('col.' + d.colour)}${d.pickup ? ` · ${t('co.pickup.row')}: ${t('pk.' + d.pickup)}` : ''}</p>
       <div class="progress"><i style="width:${pct}%"></i></div><p>${t('pay.progress', { paid: d.paid_count, n: d.people })}</p>
       <h2>${t('pay.share')}</h2>${state}
       ${d.status === 'confirmed' ? '' : payCard(d.amount, ref)}
@@ -351,7 +319,7 @@
         <span class="co-actions"><span class="badge badge--${s.status}">${t('ord.status.' + s.status)}</span>${s.status === 'waiting' && s.n !== 1 ? `<a class="copy" href="${wa(t('ord.remind.msg', { amount: s.amount, link }), '')}" target="_blank" rel="noopener">${t('ord.remind')}</a>${copyBtn(link)}` : ''}</span></li>`;
     }).join('');
     app.innerHTML = `<p class="kicker">${t('ord.title')}</p><h1>Sway ${esc(d.order_no)}</h1>
-      <p>${esc(d.qty)} × ${t('sticky.name')} · ${t('col.' + d.colour)} · ${money(d.amount)}</p>
+      <p>${esc(d.qty)} × ${t('sticky.name')} · ${t('col.' + d.colour)} · ${money(d.amount)}${d.pickup ? ` · ${t('pk.' + d.pickup)}` : ''}</p>
       <div class="progress"><i style="width:${Math.round(100 * paid / d.people)}%"></i></div>
       <p>${paid === d.people ? t('ord.all') : t('pay.progress', { paid, n: d.people })}</p>
       <ul class="shares">${rows}</ul>`;

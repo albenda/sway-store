@@ -12,7 +12,8 @@ const wa = (phone, text) => `https://wa.me/${intl(phone)}?text=${encodeURICompon
 const base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
 const COLOUR = { blue: 'כחול ים', brown: 'חום חול', mixed: 'כחול וחום' };
 const items = o => [o.qty_blue ? `${o.qty_blue} × כחול ים` : '', o.qty_brown ? `${o.qty_brown} × חום חול` : ''].filter(Boolean).join(' + ') || `${o.qty} × ${COLOUR[o.colour]}`;
-const STATUS = { new: 'חדשה', paid: 'שולמה', shipped: 'נשלחה', cancelled: 'בוטלה' };
+const STATUS = { new: 'חדשה', paid: 'שולמה', ready: 'מוכן לאיסוף', collected: 'נאסף', shipped: 'נשלחה', cancelled: 'בוטלה' };
+const PICKUP = { ashdod: 'אשדוד, המתכת 21', nesziona: 'נס ציונה' };
 const SHARE = { waiting: 'ממתין', reported: 'דיווח ששילם', confirmed: 'אושר' };
 let view = 'orders', filter = 'open', orders = [], reviews = [];
 
@@ -47,19 +48,26 @@ function orderCard(o) {
   const trackLink = `${base}order.html?o=${o.token}`;
   const payMsg = `היי ${o.name}, תודה על ההזמנה! הסכום לתשלום: ${money(o.amount)}.\nבביט למספר ${C.bitPhone}${C.payboxLink ? `, או ב־PayBox: ${C.payboxLink}` : ''}.\nבהערה כתבו: Sway ${o.order_no}`;
   const shipMsg = `היי ${o.name}, הערסל שלך יצא לדרך! נעדכן כשיגיע.`;
+  const readyMsg = o.pickup === 'nesziona'
+    ? `היי ${o.name}, הערסל שלך מחכה בנס ציונה. מתי נוח לך לאסוף?`
+    : `היי ${o.name}, הערסל שלך מוכן! מתי נוח לך לאסוף מאשדוד, רחוב המתכת 21?`;
   const revMsg = `היי ${o.name}, מקווים שאתם נהנים מהערסל. נשמח לביקורת קצרה, עם תמונה אם בא לכם: ${base}review.html?o=${o.token}`;
   return `<article class="adm-card" data-status="${o.status}">
-    <header><h2>Sway ${o.order_no}</h2><span class="badge badge--${o.status === 'paid' || o.status === 'shipped' ? 'confirmed' : o.status === 'new' ? 'reported' : ''}">${STATUS[o.status]}</span>
+    <header><h2>Sway ${o.order_no}</h2><span class="badge badge--${['paid', 'ready', 'collected', 'shipped'].includes(o.status) ? 'confirmed' : o.status === 'new' ? 'reported' : ''}">${STATUS[o.status]}</span>
       <time>${new Date(o.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</time></header>
-    <p><b>${items(o)}</b> · ${money(o.amount)}${o.discount ? ` (הנחה ${money(o.discount)})` : ''} · משלוח: ${o.shipping_fee == null ? '<b class="adm-warn">לתאם</b>' : money(o.shipping_fee)}${o.people > 1 ? ` · קנייה חברית ל־${o.people}` : ''}</p>
-    <p>${esc(o.name)} · <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a>${o.email ? ` · ${esc(o.email)}` : ''}<br>${esc(o.address)}, ${esc(o.city)}</p>
+    <p><b>${items(o)}</b> · ${money(o.amount)}${o.discount ? ` (הנחה ${money(o.discount)})` : ''}${o.pickup ? '' : ` · משלוח: ${o.shipping_fee == null ? '<b class="adm-warn">לתאם</b>' : money(o.shipping_fee)}`}${o.source === 'whatsapp' ? ' · מהבוט' : ''}${o.people > 1 ? ` · קנייה חברית ל־${o.people}` : ''}</p>
+    <p>${esc(o.name)} · <a href="tel:${esc(o.phone)}">${esc(o.phone)}</a>${o.email ? ` · ${esc(o.email)}` : ''}<br>${o.pickup ? `איסוף: <b>${PICKUP[o.pickup]}</b>${o.pickup === 'nesziona' && ['new', 'paid'].includes(o.status) ? ' <b class="adm-warn">(לתאם עם אבא, 2-3 ימים)</b>' : ''}` : `${esc(o.address)}, ${esc(o.city)}`}</p>
     ${o.is_gift ? `<p class="adm-gift">מתנה ל: ${to}${o.gift_note ? `<br>פתק: “${esc(o.gift_note)}”` : ''}</p>` : ''}
     ${o.notes ? `<p class="adm-note">${esc(o.notes)}</p>` : ''}
     ${o.shipping_fee == null && o.status === 'new' ? `<form class="adm-fee" data-fee="${o.id}"><label class="field"><span>דמי משלוח שסוכמו (₪)</span><input name="fee" type="number" min="0" max="500" inputmode="numeric" required></label><button class="btn btn--line btn--sm">עדכון הסכום</button></form>` : ''}
     <ul class="shares">${shares.map(s => shareRow(o, s)).join('')}</ul>
     <div class="adm-actions">
       <a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, payMsg)}">פרטי תשלום בוואטסאפ</a>
-      ${o.status === 'paid' ? `<button class="btn btn--coral btn--sm" data-ship="${o.id}">סימון נשלח</button>` : ''}
+      ${o.status === 'paid' && o.pickup ? `<button class="btn btn--coral btn--sm" data-ready="${o.id}">מוכן לאיסוף</button>` : ''}
+      ${o.status === 'ready' ? `<a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, readyMsg)}">הודעת איסוף</a>
+        <button class="btn btn--coral btn--sm" data-collected="${o.id}">נאסף</button>` : ''}
+      ${o.status === 'collected' ? `<a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, revMsg)}">בקשת ביקורת</a>` : ''}
+      ${o.status === 'paid' && !o.pickup ? `<button class="btn btn--coral btn--sm" data-ship="${o.id}">סימון נשלח</button>` : ''}
       ${o.status === 'shipped' ? `<a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, shipMsg)}">הודעת משלוח</a>
         <a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, revMsg)}">בקשת ביקורת</a>` : ''}
       ${o.people > 1 ? `<a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${trackLink}">עמוד המעקב</a>` : ''}
@@ -81,11 +89,11 @@ function reviewCard(r) {
 function render() {
   const pend = reviews.filter(r => r.status === 'pending').length;
   const list = view === 'orders'
-    ? orders.filter(o => filter === 'all' || (filter === 'open' ? ['new', 'paid'].includes(o.status) : o.status === filter)).map(orderCard).join('') || '<p>אין הזמנות כאן.</p>'
+    ? orders.filter(o => filter === 'all' || (filter === 'open' ? ['new', 'paid', 'ready'].includes(o.status) : o.status === filter)).map(orderCard).join('') || '<p>אין הזמנות כאן.</p>'
     : reviews.map(reviewCard).join('') || '<p>אין עדיין ביקורות.</p>';
   app.innerHTML = `<h1>ניהול Sway</h1>
     <nav class="adm-tabs"><button data-view="orders" aria-pressed="${view === 'orders'}">הזמנות</button><button data-view="reviews" aria-pressed="${view === 'reviews'}">ביקורות${pend ? ` (${pend})` : ''}</button><button class="co__back" data-logout>יציאה</button></nav>
-    ${view === 'orders' ? `<nav class="adm-tabs adm-tabs--sub">${[['open', 'פתוחות'], ['new', 'חדשות'], ['paid', 'שולמו'], ['shipped', 'נשלחו'], ['all', 'הכל']].map(([k, l]) => `<button data-filter="${k}" aria-pressed="${filter === k}">${l}</button>`).join('')}</nav>` : ''}
+    ${view === 'orders' ? `<nav class="adm-tabs adm-tabs--sub">${[['open', 'פתוחות'], ['new', 'חדשות'], ['paid', 'שולמו'], ['ready', 'מוכנים לאיסוף'], ['collected', 'נאספו'], ['all', 'הכל']].map(([k, l]) => `<button data-filter="${k}" aria-pressed="${filter === k}">${l}</button>`).join('')}</nav>` : ''}
     <div class="adm-list">${list}</div>`;
 }
 
@@ -121,6 +129,8 @@ app.addEventListener('click', async e => {
     if (!left) await sb.from('orders_v2').update({ status: 'paid' }).eq('id', o.id);
     return refresh();
   }
+  if (b.dataset.ready) { await sb.from('orders_v2').update({ status: 'ready' }).eq('id', b.dataset.ready); return refresh(); }
+  if (b.dataset.collected) { await sb.from('orders_v2').update({ status: 'collected' }).eq('id', b.dataset.collected); return refresh(); }
   if (b.dataset.ship) { await sb.from('orders_v2').update({ status: 'shipped', shipped_at: new Date().toISOString() }).eq('id', b.dataset.ship); return refresh(); }
   if (b.dataset.cancel && confirm('לבטל את ההזמנה?')) { await sb.from('orders_v2').update({ status: 'cancelled' }).eq('id', b.dataset.cancel); return refresh(); }
   if (b.dataset.rev) { const [id, status] = b.dataset.rev.split(':'); await sb.from('reviews').update({ status }).eq('id', id); return refresh(); }

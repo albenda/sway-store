@@ -3,22 +3,14 @@
 const DICT = {
   he: {
     'meta.title': 'Sway. ערסל עם מעמד | קצת פחות עשייה.',
-    'meta.desc': 'ערסל עם מעמד שמתקפל לתיק אחד ונפתח בכל מקום. בלי עצים, בלי קידוח, שתי דקות מהתיק לרוגע. ₪450, משלוח חינם למרכז.',
+    'meta.desc': 'ערסל עם מעמד שמתקפל לתיק אחד ונפתח בכל מקום. בלי עצים, בלי קידוח, שתי דקות מהתיק לרוגע. ₪450, איסוף עצמי מאשדוד או מנס ציונה.',
     'skip': 'דילוג לערסל',
     'lang.toggle': 'EN',
     'lang.label': 'Switch to English',
     'nav.hammock': 'הערסל',
     'nav.colours': 'הצבעים',
-    
     'price.was': 'במקום ₪700',
 
-    
-    
-    
-    
-    
-
-    'lp.trust': 'משלוח חינם במרכז · 30 יום להחזרה · תשלום בביט',
     'lp.balcony.meta': 'ערסל למרפסת, בלי קידוח | Sway',
     'lp.balcony.kicker': 'ערסל למרפסת',
     'lp.balcony.body': 'ערסל עם מעמד שעומד על הרצפה. בלי קידוח, בלי קיר ובלי תקרה. מוכן בשתי דקות, ומתקפל לתיק כשצריך את המקום.',
@@ -27,8 +19,7 @@ const DICT = {
     'lp.beach.body': 'ערסל עם מעמד שמתקפל לתיק נשיאה של 8 ק״ג. נכנס לתא המטען, נפתח על החול בשתי דקות. בלי לחפש עצים.',
     'lp.gift.meta': 'מתנה שמרגיעה: ערסל עם מעמד | Sway',
     'lp.gift.kicker': 'רעיון למתנה',
-    'lp.gift.body': 'ערסל עם מעמד, בכחול או בחום. נשלח ישר למקבל המתנה, עם פתק אישי בכתב יד ובלי מחיר בחבילה.',
-    
+    'lp.gift.body': 'ערסל עם מעמד, בכחול או בחום. עם פתק אישי בכתב יד, ובלי מחיר בחבילה. אוספים מאשדוד או מנס ציונה.',
     'cmp.trees': 'ערסל בין עצים',
     'cmp.wall': 'ערסל תלוי בקיר',
     'cmp.r1': 'מה צריך כדי לתלות',
@@ -55,17 +46,11 @@ const DICT = {
     'wx.sunset': 'השקיעה היום ב־{t}',
     'wx.sat': 'בשבת {d}°, {w}',
     'wx.0': 'בהיר', 'wx.1': 'מעונן חלקית', 'wx.2': 'ערפילי', 'wx.3': 'גשום', 'wx.4': 'סוער',
-    
-    
-    
-    
-    
 
     'col.kicker': 'שני צבעים. מצב רוח אחד.',
     'col.title': 'בחרו את סוג\nהרוגע שלכם.',
     'col.blue': 'כחול ים',
     'col.brown': 'חום חול',
-    
     'col.blue.alt': 'ערסל Sway בכחול ים על מעמד שחור בחצר עם עציצים',
     'col.brown.alt': 'ערסל Sway בחום חול על מעמד שחור בחצר עם עציצים',
 
@@ -78,7 +63,6 @@ const DICT = {
     'ar.place': 'להציב אצלי',
     'close': 'סגירה',
 
-    
     'spec.len.l': 'אורך פתוח', 'spec.len.v': '3 מטר',
     'spec.weight.l': 'משקל כולל', 'spec.weight.v': '8 ק״ג',
     'spec.bag.l': 'מידות התיק', 'spec.bag.v': '112×25×17 ס״מ',
@@ -100,9 +84,6 @@ const DICT = {
     'fit.no.wid': 'אין מקום. חסרים {w} ס״מ ברוחב.',
     'fit.plan': 'שרטוט מלמעלה: המקום שלכם מול השטח שהערסל צריך',
 
-    
-    
-    
     'offer.group': 'או לקנות יחד עם חברים',
 
     'group.kicker': 'קנייה חברית',
@@ -110,7 +91,7 @@ const DICT = {
     'group.s1': 'בוחרים כמה ערסלים וכמה חברים משתתפים.',
     'group.s2': 'כל חבר מקבל קישור אישי עם הסכום שלו.',
     'group.s3': 'כולם משלמים בביט או ב־PayBox, ורואים מי כבר שילם.',
-    'group.s4': 'כשכולם שילמו, ההזמנה יוצאת לדרך.',
+    'group.s4': 'כשכולם שילמו, ההזמנה מוכנה לאיסוף.',
     'group.cta': 'להזמנה חברית',
 
     'faq.kicker': 'שאלות',
@@ -126,9 +107,9 @@ const DICT = {
     'faq.q5': 'איך משלמים?',
     'faq.a5': 'בביט או ב־PayBox. אחרי ההזמנה מקבלים מספר הזמנה וסכום, משלמים, ואנחנו מאשרים אישית בוואטסאפ.',
     'faq.q6': 'איך עובדת קנייה חברית?',
-    'faq.a6': 'בוחרים כמה משתתפים. כל אחד מקבל קישור אישי עם החלק שלו ומשלם בעצמו. כולם רואים מי כבר שילם, וכשכולם שילמו ההזמנה יוצאת.',
-    'faq.q7': 'כמה עולה המשלוח וכמה זמן?',
-    'faq.a7': 'משלוח חינם לאזור המרכז, 3-5 ימי עסקים. לצפון ולדרום יש תוספת קטנה, ונתאם אותה איתכם בוואטסאפ לפני התשלום.',
+    'faq.a6': 'בוחרים כמה משתתפים. כל אחד מקבל קישור אישי עם החלק שלו ומשלם בעצמו. כולם רואים מי כבר שילם, וכשכולם שילמו ההזמנה מוכנה לאיסוף.',
+    'faq.q7': 'איך מקבלים את הערסל?',
+    'faq.a7': 'כרגע באיסוף עצמי, בלי עלות. מאשדוד, רחוב המתכת 21, בשעה שנתאם בוואטסאפ. או מנס ציונה: הערסל מחכה שם תוך 2-3 ימים מההזמנה, ונודיע לכם כשהוא מוכן. משלוח עד הבית יחזור בהמשך.',
     'faq.q8': 'ואם לא התאהבתי?',
     'faq.a8': 'יש 30 יום להחזרה עם החזר כספי מלא. זכות הביטול לפי חוק הגנת הצרכן שמורה לכם תמיד.',
 
@@ -152,7 +133,7 @@ const DICT = {
     'foot.care': 'מדריך טיפול',
     'foot.about': 'מי אנחנו',
     'foot.tag': 'קצת פחות עשייה.',
-    'foot.shipping': 'משלוחים',
+    'foot.shipping': 'איסוף עצמי',
     'foot.returns': 'החזרות וביטולים',
     'foot.terms': 'תקנון ופרטיות',
     'foot.whatsapp': 'וואטסאפ',
@@ -162,7 +143,6 @@ const DICT = {
 
     'co.title': 'שיהיה שלכם.',
     'co.step1': 'בחירה', 'co.step2': 'פרטים', 'co.step3': 'תשלום',
-    
     'co.dec': 'פחות', 'co.inc': 'עוד',
     'co.group': 'קנייה חברית',
     'co.group.desc': 'כל משתתף משלם את החלק שלו בקישור אישי.',
@@ -170,43 +150,29 @@ const DICT = {
     'co.each': 'כל אחד משלם',
     'co.you.more': 'אתם משלימים',
     'co.total': 'סה״כ',
-    'co.delivery': 'משלוח',
     'co.next': 'להמשך',
     'co.back': 'חזרה',
     'co.name': 'שם מלא',
     'co.phone': 'טלפון נייד',
-    'co.city': 'עיר',
-    'co.address': 'רחוב ומספר בית',
-    'co.notes': 'הערות למשלוח (לא חובה)',
+
+    'co.notes': 'הערות (לא חובה)',
     'co.err.name': 'נא למלא שם מלא',
     'co.err.phone': 'מספר נייד ישראלי, 10 ספרות שמתחילות ב־05',
-    'co.err.city': 'נא למלא עיר',
-    'co.err.address': 'נא למלא רחוב ומספר',
+
     'co.email': 'דוא״ל, לשליחת הקבלה (לא חובה)',
     'co.err.email': 'כתובת הדוא״ל לא תקינה',
     'co.gift': 'זו מתנה',
-    'co.gift.desc': 'נשלח ישר למקבל המתנה, עם פתק אישי ובלי מחיר בחבילה.',
-    'co.rname': 'שם מקבל המתנה',
-    'co.rphone': 'הנייד של מקבל המתנה, לתיאום המשלוח',
+    'co.gift.desc': 'עם פתק אישי בכתב יד, ובלי מחיר בחבילה.',
+
     'co.gnote': 'פתק אישי (נכתוב אותו בכתב יד, לא חובה)',
-    'co.err.rname': 'נא למלא את שם מקבל המתנה',
-    'co.city.gift': 'העיר של מקבל המתנה',
-    'co.address.gift': 'הרחוב ומספר הבית שלו',
+
     'co.discount': 'הנחת קנייה חברית',
     'co.discount.pair': 'הנחת זוג',
     'co.pick': 'כמה מכל צבע?',
     'co.pair.hint': 'עוד ערסל, והזוג ב־₪850. אפשר גם אחד מכל צבע.',
     'col.mixed': 'כחול וחום',
     'co.discount.hint': 'מ־3 ערסלים: ₪20 הנחה על כל ערסל.',
-    'co.delivery.city': 'לפי העיר, בשלב הבא',
-    'co.delivery.free': 'חינם',
-    'co.delivery.tbd': 'נתאם איתכם לפני התשלום',
-    'co.delivery.days': '{d} ימי עסקים',
-    'co.tbd.title': 'רגע לפני התשלום.',
-    'co.tbd': 'את דמי המשלוח לעיר שלכם נתאם איתכם בוואטסאפ. נשלח לכם את הסכום הסופי, ואז משלמים.',
-    'co.tbd.btn': 'לקבלת הסכום הסופי בוואטסאפ',
-    'co.tbd.group': 'את דמי המשלוח לעיר שלכם נתאם בוואטסאפ עם מזמין הקנייה.',
-    'co.wa.tbd': 'היי, הזמנתי ערסל Sway, הזמנה {ref}, למשלוח ל{city}. מה הסכום הסופי כולל משלוח?',
+
     'rev.title': 'מה אומרים\nמי שכבר נח.',
     'rev.page': 'איך הערסל?',
     'rev.intro': 'נשמח לשמוע איך יצא. הביקורת תופיע באתר אחרי שנאשר אותה, בדיוק כמו שכתבתם.',
@@ -243,7 +209,7 @@ const DICT = {
     'co.offline': 'לא הצלחנו לשמור את ההזמנה במערכת. שלחו אותה אלינו בוואטסאפ, ונחזור אליכם עם פרטי התשלום.',
     'co.offline.title': 'עוד צעד אחד.',
     'co.offline.btn': 'שליחת ההזמנה בוואטסאפ',
-    'co.wa.order': 'היי, אני רוצה להזמין ערסל Sway.\nצבע: {colour}\nכמות: {qty}\nשם: {name}\nטלפון: {phone}\nכתובת: {address}, {city}',
+    'co.wa.order': 'היי, אני רוצה להזמין ערסל Sway.\nצבע: {colour}\nכמות: {qty}\nשם: {name}\nטלפון: {phone}\nאיסוף: {pickup}',
     'co.wa.paid': 'היי, שילמתי ₪{amount} על הזמנה {ref}.',
 
     'pay.title': 'קנייה חברית של Sway',
@@ -260,7 +226,7 @@ const DICT = {
     'ord.status.waiting': 'ממתין לתשלום',
     'ord.status.reported': 'דיווח ששילם',
     'ord.status.confirmed': 'שולם ואושר',
-    'ord.all': 'כולם שילמו. ההזמנה יוצאת לדרך.',
+    'ord.all': 'כולם שילמו. ההזמנה מוכנה לאיסוף.',
     'ord.remind': 'תזכורת',
     'ord.remind.msg': 'היי, תזכורת קטנה לגבי הערסל שקונים יחד. החלק שלך: ₪{amount}. משלמים כאן: {link}',
     'nav.label': 'ניווט ראשי',
@@ -298,7 +264,7 @@ const DICT = {
     'det.alt': 'תקריב של הוו המתכוונן, תליית החבלים והבד המפוספס',
     'yours.title': 'אחר הצהריים\nשלכם מחכה.',
     'yours.body': 'החלטה אחת קטנה.\nהרבה יותר לא לעשות כלום.',
-    'yours.ship': 'משלוח חינם למרכז',
+    'yours.ship': 'איסוף עצמי מאשדוד או מנס ציונה',
     'mq.1': 'פסים בכחול ובחום',
     'mq.2': 'בלי עצים, בלי קידוח',
     'mq.3': 'כמה גבהים לתלייה',
@@ -331,25 +297,26 @@ const DICT = {
     'lp.beach.l1': 'שקיעה על החול,',
     'lp.beach.l2': 'בערסל.',
     'lp.gift.l1': 'מתנה',
-    'lp.gift.l2': 'של מנוחה.'
+    'lp.gift.l2': 'של מנוחה.',
+    'co.pickup': 'איפה אוספים?',
+    'co.pickup.row': 'איסוף עצמי',
+    'co.free': 'חינם',
+    'pk.ashdod': 'אשדוד, רחוב המתכת 21',
+    'pk.ashdod.note': 'בשעה שנתאם איתכם בוואטסאפ.',
+    'pk.ashdod.after': 'נכתוב לכם בוואטסאפ כדי לתאם שעת איסוף.',
+    'pk.nesziona': 'נס ציונה',
+    'pk.nesziona.note': 'הערסל מחכה שם תוך 2-3 ימים. נודיע לכם כשהוא מוכן.',
+    'pk.nesziona.after': 'הערסל יחכה לכם שם תוך 2-3 ימים. נכתוב לכם בוואטסאפ כשהוא מוכן.'
   },  en: {
     'meta.title': 'Sway. | A little less doing.',
-    'meta.desc': 'A hammock and stand that fold into one bag and open anywhere. No trees, no drilling, two minutes from bag to calm. ₪450, free delivery to central Israel.',
+    'meta.desc': 'A hammock and stand that fold into one bag and open anywhere. No trees, no drilling, two minutes from bag to calm. ₪450, self pickup in Ashdod or Nes Ziona.',
     'skip': 'Skip to the hammock',
     'lang.toggle': 'עב',
     'lang.label': 'לעברית',
     'nav.hammock': 'The hammock',
     'nav.colours': 'The colours',
-    
     'price.was': 'was ₪700',
 
-    
-    
-    
-    
-    
-
-    'lp.trust': 'Free delivery in central Israel · 30-day returns · Pay with Bit',
     'lp.balcony.meta': 'A balcony hammock, no drilling | Sway',
     'lp.balcony.kicker': 'Balcony hammock',
     'lp.balcony.body': 'A hammock with a stand that stands on the floor. No drilling, no wall, no ceiling. Ready in two minutes, folds into a bag when you need the space.',
@@ -358,8 +325,7 @@ const DICT = {
     'lp.beach.body': 'A hammock with a stand that folds into an 8 kg carry bag. Fits the trunk, opens on the sand in two minutes. No trees needed.',
     'lp.gift.meta': 'A gift of calm: hammock with stand | Sway',
     'lp.gift.kicker': 'Gift idea',
-    'lp.gift.body': 'A hammock with a stand, in blue or brown. Shipped straight to the recipient, with a handwritten note and no price in the parcel.',
-    
+    'lp.gift.body': 'A hammock with a stand, in blue or brown. With a handwritten note, and no price in the parcel. Pick it up in Ashdod or Nes Ziona.',
     'cmp.trees': 'Hammock between trees',
     'cmp.wall': 'Wall-mounted hammock',
     'cmp.r1': 'What you need to hang it',
@@ -386,17 +352,11 @@ const DICT = {
     'wx.sunset': 'Sunset today at {t}',
     'wx.sat': 'Saturday {d}°, {w}',
     'wx.0': 'clear', 'wx.1': 'partly cloudy', 'wx.2': 'foggy', 'wx.3': 'rainy', 'wx.4': 'stormy',
-    
-    
-    
-    
-    
 
     'col.kicker': 'Two colours. One state of mind.',
     'col.title': 'Pick your\nkind of calm.',
     'col.blue': 'Ocean blue',
     'col.brown': 'Driftwood brown',
-    
     'col.blue.alt': 'Ocean blue Sway hammock on a black stand in a garden with potted plants',
     'col.brown.alt': 'Driftwood brown Sway hammock on a black stand in a garden with potted plants',
 
@@ -409,7 +369,6 @@ const DICT = {
     'ar.place': 'Place it here',
     'close': 'Close',
 
-    
     'spec.len.l': 'Open length', 'spec.len.v': '3 m',
     'spec.weight.l': 'Total weight', 'spec.weight.v': '8 kg',
     'spec.bag.l': 'Bag size', 'spec.bag.v': '112×25×17 cm',
@@ -431,9 +390,6 @@ const DICT = {
     'fit.no.wid': 'It does not fit. You are {w} cm short in width.',
     'fit.plan': 'Top view: your space against the area the hammock needs',
 
-    
-    
-    
     'offer.group': 'or buy together with friends',
 
     'group.kicker': 'Buy with friends',
@@ -441,7 +397,7 @@ const DICT = {
     'group.s1': 'Choose how many hammocks and how many friends are in.',
     'group.s2': 'Each friend gets a personal link with their share.',
     'group.s3': 'Everyone pays by Bit or PayBox and sees who has paid.',
-    'group.s4': 'Once everyone has paid, the order ships.',
+    'group.s4': 'Once everyone has paid, the order is ready for pickup.',
     'group.cta': 'Start a group order',
 
     'faq.kicker': 'Questions',
@@ -458,8 +414,8 @@ const DICT = {
     'faq.a5': 'With Bit or PayBox. After ordering you get an order number and an amount. Pay, and we confirm personally on WhatsApp.',
     'faq.q6': 'How does buying with friends work?',
     'faq.a6': 'Choose how many people are in. Each gets a personal link with their share and pays on their own. Everyone sees who has paid, and once all have paid the order ships.',
-    'faq.q7': 'How much is delivery and how long does it take?',
-    'faq.a7': 'Free delivery to central Israel, 3-5 business days. The north and south have a small surcharge, which we agree with you on WhatsApp before payment.',
+    'faq.q7': 'How do I get the hammock?',
+    'faq.a7': 'For now it is self pickup, at no cost. In Ashdod, 21 HaMatechet St, at a time we agree on WhatsApp. Or in Nes Ziona: the hammock is there within 2-3 days of your order, and we let you know when it is ready. Home delivery will return later.',
     'faq.q8': 'What if I do not love it?',
     'faq.a8': 'You have 30 days to return it for a full refund. Your cancellation rights under Israeli consumer protection law always apply.',
 
@@ -483,7 +439,7 @@ const DICT = {
     'foot.care': 'Care guide',
     'foot.about': 'About us',
     'foot.tag': 'A little less doing.',
-    'foot.shipping': 'Shipping',
+    'foot.shipping': 'Self pickup',
     'foot.returns': 'Returns',
     'foot.terms': 'Terms & privacy',
     'foot.whatsapp': 'WhatsApp',
@@ -493,7 +449,6 @@ const DICT = {
 
     'co.title': 'Make it yours.',
     'co.step1': 'Choose', 'co.step2': 'Details', 'co.step3': 'Payment',
-    
     'co.dec': 'Fewer', 'co.inc': 'More',
     'co.group': 'Buy with friends',
     'co.group.desc': 'Each person pays their share through a personal link.',
@@ -501,43 +456,29 @@ const DICT = {
     'co.each': 'Each pays',
     'co.you.more': 'You cover',
     'co.total': 'Total',
-    'co.delivery': 'Delivery',
     'co.next': 'Continue',
     'co.back': 'Back',
     'co.name': 'Full name',
     'co.phone': 'Mobile phone',
-    'co.city': 'City',
-    'co.address': 'Street and number',
-    'co.notes': 'Delivery notes (optional)',
+
+    'co.notes': 'Notes (optional)',
     'co.err.name': 'Please enter your full name',
     'co.err.phone': 'An Israeli mobile number, 10 digits starting with 05',
-    'co.err.city': 'Please enter a city',
-    'co.err.address': 'Please enter a street and number',
+
     'co.email': 'Email, for your receipt (optional)',
     'co.err.email': 'That email address does not look right',
     'co.gift': 'This is a gift',
-    'co.gift.desc': 'We ship straight to the recipient, with a personal note and no price in the parcel.',
-    'co.rname': 'Recipient name',
-    'co.rphone': 'Recipient mobile, to arrange delivery',
+    'co.gift.desc': 'With a handwritten note, and no price in the parcel.',
+
     'co.gnote': 'Personal note (we write it by hand, optional)',
-    'co.err.rname': 'Please enter the recipient name',
-    'co.city.gift': 'Recipient city',
-    'co.address.gift': 'Recipient street and number',
+
     'co.discount': 'Group discount',
     'co.discount.pair': 'Pair discount',
     'co.pick': 'How many of each colour?',
     'co.pair.hint': 'Add one more and the pair is ₪850. One of each colour works too.',
     'col.mixed': 'Blue and brown',
     'co.discount.hint': 'From 3 hammocks: ₪20 off each.',
-    'co.delivery.city': 'By city, in the next step',
-    'co.delivery.free': 'Free',
-    'co.delivery.tbd': 'Agreed with you before payment',
-    'co.delivery.days': '{d} business days',
-    'co.tbd.title': 'One moment before paying.',
-    'co.tbd': 'We will agree the delivery fee for your city on WhatsApp. We send you the final amount, then you pay.',
-    'co.tbd.btn': 'Get the final amount on WhatsApp',
-    'co.tbd.group': 'The delivery fee for your city will be agreed on WhatsApp with the organiser.',
-    'co.wa.tbd': 'Hi, I ordered a Sway hammock, order {ref}, delivering to {city}. What is the final amount with delivery?',
+
     'rev.title': 'What people say\nonce they are resting.',
     'rev.page': 'How is your hammock?',
     'rev.intro': 'We would love to hear how it went. Your review appears on the site after we approve it, exactly as you wrote it.',
@@ -574,7 +515,7 @@ const DICT = {
     'co.offline': 'We could not save the order in our system. Send it to us on WhatsApp and we will get back to you with payment details.',
     'co.offline.title': 'One more step.',
     'co.offline.btn': 'Send the order on WhatsApp',
-    'co.wa.order': 'Hi, I would like to order a Sway hammock.\nColour: {colour}\nQuantity: {qty}\nName: {name}\nPhone: {phone}\nAddress: {address}, {city}',
+    'co.wa.order': 'Hi, I would like to order a Sway hammock.\nColour: {colour}\nQuantity: {qty}\nName: {name}\nPhone: {phone}\nPickup: {pickup}',
     'co.wa.paid': 'Hi, I paid ₪{amount} for order {ref}.',
 
     'pay.title': 'Sway group order',
@@ -591,7 +532,7 @@ const DICT = {
     'ord.status.waiting': 'Waiting for payment',
     'ord.status.reported': 'Says they paid',
     'ord.status.confirmed': 'Paid and confirmed',
-    'ord.all': 'Everyone has paid. The order is on its way.',
+    'ord.all': 'Everyone has paid. The order is ready for pickup.',
     'ord.remind': 'Remind',
     'ord.remind.msg': 'Hi, a quick reminder about the hammock we are buying together. Your share: ₪{amount}. Pay here: {link}',
     'nav.label': 'Main navigation',
@@ -629,7 +570,7 @@ const DICT = {
     'det.alt': 'Close-up of the adjustable hook, rope suspension and striped hammock',
     'yours.title': 'Your afternoon\nis waiting.',
     'yours.body': 'One small decision.\nA lot more doing nothing.',
-    'yours.ship': 'Free delivery in central Israel',
+    'yours.ship': 'Self pickup in Ashdod or Nes Ziona',
     'mq.1': 'Blue & brown stripes',
     'mq.2': 'Freestanding design',
     'mq.3': 'Adjustable hanging positions',
@@ -662,7 +603,16 @@ const DICT = {
     'lp.beach.l1': 'Sunset on the sand,',
     'lp.beach.l2': 'in a hammock.',
     'lp.gift.l1': 'The gift',
-    'lp.gift.l2': 'of rest.'
+    'lp.gift.l2': 'of rest.',
+    'co.pickup': 'Where do you pick it up?',
+    'co.pickup.row': 'Self pickup',
+    'co.free': 'Free',
+    'pk.ashdod': 'Ashdod, 21 HaMatechet St',
+    'pk.ashdod.note': 'At a time we agree on WhatsApp.',
+    'pk.ashdod.after': 'We will message you on WhatsApp to set a pickup time.',
+    'pk.nesziona': 'Nes Ziona',
+    'pk.nesziona.note': 'Ready there within 2-3 days. We let you know when it is ready.',
+    'pk.nesziona.after': 'It will be waiting there within 2-3 days. We will message you on WhatsApp when it is ready.'
   }
 };
 

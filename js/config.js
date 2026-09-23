@@ -7,14 +7,8 @@ window.SWAY = {
   payboxLink: '',            // permanent PayBox group link; empty = hide PayBox
   supabaseUrl: 'https://fawifuxyaltvkfkmsuko.supabase.co',
   supabaseKey: 'sb_publishable_fJMqMfcKPaJlxurR6xFohA_2E6NdZpA', // publishable, client-safe
-  // shipping by zone (display). null fee = exact price agreed on WhatsApp before payment.
-  // North/south wait for courier quotes (pickup: Ashdod). Authority: shipping_zones table.
-  shipping: {
-    center: { fee: 0, days: '3-5' },
-    north: { fee: null, days: '3-5' },
-    south: { fee: null, days: '3-5' },
-    eilat: { fee: 39, days: '4-7' }
-  },
+  // self pickup only for now (Ashdod, HaMatechet 21 / Nes Ziona, 2-3 days). Home delivery returns later:
+  // js/cities.js + tools/shipping_seed.py + shipping_zones are kept for that.
   groupDiscount: { perUnit: 20, minQty: 3 },
   pairDiscount: 50,          // per 2 hammocks: a pair costs ₪850
   ga4: '',     // Google Analytics 4 measurement ID, e.g. 'G-XXXXXXX' (empty = off)
