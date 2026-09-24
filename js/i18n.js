@@ -117,7 +117,7 @@ const DICT = {
     'faq.q6': 'איך עובדת קנייה חברית?',
     'faq.a6': 'בוחרים כמה משתתפים. כל אחד מקבל קישור אישי עם החלק שלו ומשלם בעצמו. כולם רואים מי כבר שילם, וכשכולם שילמו ההזמנה מוכנה לאיסוף.',
     'faq.q7': 'איך מקבלים את הערסל?',
-    'faq.a7': 'כרגע באיסוף עצמי, בלי עלות. מאשדוד, רחוב המתכת 21, בשעה שנתאם בוואטסאפ. או מנס ציונה: הערסל מחכה שם תוך 2-3 ימים מההזמנה, ונודיע לכם כשהוא מוכן. משלוח עד הבית יחזור בהמשך.',
+    'faq.a7': 'כרגע באיסוף עצמי, בלי עלות. מאשדוד, רחוב המתכת 21, בשעה שנתאם בוואטסאפ. או מנס ציונה: הערסל מחכה שם תוך 2-3 ימים מהתשלום, ונודיע לכם כשהוא מוכן. משלוח עד הבית יחזור בהמשך.',
     'faq.q8': 'ואם לא התאהבתי?',
     'faq.a8': 'יש 30 יום להחזרה עם החזר כספי מלא. זכות הביטול לפי חוק הגנת הצרכן שמורה לכם תמיד.',
 
@@ -179,6 +179,12 @@ const DICT = {
     'co.discount.pair': 'הנחת זוג',
     'co.pick': 'כמה מכל צבע?',
     'co.pair.hint': 'עוד ערסל, והזוג ב־₪850. אפשר גם אחד מכל צבע.',
+    'co.deal': 'כמה ערסלים',
+    'co.one': 'ערסל אחד',
+    'co.pair': 'זוג',
+    'co.pair.save': 'חוסכים {s}',
+    'co.pair.mix': 'אפשר גם אחד מכל צבע: מורידים אחד ומוסיפים בצבע השני.',
+    'pend.bar': 'הזמנה Sway {no} עוד לא אושרה בוואטסאפ.',
     'col.mixed': 'כחול וחום',
     'co.discount.hint': 'מ־3 ערסלים: ₪20 הנחה על כל ערסל.',
 
@@ -323,8 +329,8 @@ const DICT = {
     'pk.ashdod.note': 'א׳-ה׳, 08:30-14:30, בשעה שנתאם בוואטסאפ.',
     'pk.ashdod.after': 'נכתוב לכם בוואטסאפ כדי לתאם שעת איסוף (א׳-ה׳, 08:30-14:30).',
     'pk.nesziona': 'נס ציונה',
-    'pk.nesziona.note': 'הערסל מחכה שם תוך 2-3 ימים. נודיע לכם כשהוא מוכן.',
-    'pk.nesziona.after': 'הערסל יחכה לכם שם תוך 2-3 ימים. נכתוב לכם בוואטסאפ כשהוא מוכן.'
+    'pk.nesziona.note': 'הערסל מחכה שם תוך 2-3 ימים מהתשלום. נודיע לכם כשהוא מוכן.',
+    'pk.nesziona.after': 'הערסל יחכה לכם שם תוך 2-3 ימים מהתשלום. נכתוב לכם בוואטסאפ כשהוא מוכן.'
   },  en: {
     'meta.title': 'Sway. | Calm that goes with you.',
     'meta.desc': 'A hammock with its own stand. 3 m open, 8 kg in one bag, two minutes to set up. No trees, no drilling. ₪450 instead of ₪700.',
@@ -503,6 +509,12 @@ const DICT = {
     'co.discount.pair': 'Pair discount',
     'co.pick': 'How many of each colour?',
     'co.pair.hint': 'Add one more and the pair is ₪850. One of each colour works too.',
+    'co.deal': 'How many',
+    'co.one': 'One hammock',
+    'co.pair': 'A pair',
+    'co.pair.save': 'Save {s}',
+    'co.pair.mix': 'One of each colour works too: remove one and add the other colour.',
+    'pend.bar': 'Order Sway {no} is not confirmed on WhatsApp yet.',
     'col.mixed': 'Blue and brown',
     'co.discount.hint': 'From 3 hammocks: ₪20 off each.',
 
@@ -647,7 +659,7 @@ const DICT = {
     'pk.ashdod.note': 'Sun-Thu, 08:30-14:30, at a time we agree on WhatsApp.',
     'pk.ashdod.after': 'We will message you on WhatsApp to set a pickup time (Sun-Thu, 08:30-14:30).',
     'pk.nesziona': 'Nes Ziona',
-    'pk.nesziona.note': 'Ready there within 2-3 days. We let you know when it is ready.',
+    'pk.nesziona.note': 'Ready there within 2-3 days of payment. We let you know when it is ready.',
     'pk.nesziona.after': 'It will be waiting there within 2-3 days. We will message you on WhatsApp when it is ready.'
   }
 };

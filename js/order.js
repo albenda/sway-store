@@ -112,10 +112,16 @@
         <button type="button" ${attr}="1" aria-label="${t('co.inc')} ${lab}" ${canInc ? '' : 'disabled'}>${icon('plus', 15)}</button></div>`;
     const rows = ['blue', 'brown'].map(c => `<div class="co-row"><button type="button" class="colour-choice${S[c] ? ' selected' : ''}" data-pick="${c}" aria-pressed="${view() === c}"><span class="fabric-chip fabric-${c}" aria-hidden="true">${icon('check')}</span>${t('col.' + c)}</button>
         ${stepper(`data-cq-${c}`, S[c], t('col.' + c), S[c] > 0 && qty() > 1, qty() < C.maxQty)}</div>`).join('');
+    const one = qty() === 1, two = qty() === 2;
+    const deal = qty() <= 2 ? `<div class="co-deal" role="group" aria-label="${t('co.deal')}">
+        <button type="button" class="co-deal__opt${one ? ' is-on' : ''}" data-qset="1" aria-pressed="${one}"><b>${t('co.one')}</b><span>${money(C.price)}</span></button>
+        <button type="button" class="co-deal__opt${two ? ' is-on' : ''}" data-qset="2" aria-pressed="${two}"><b>${t('co.pair')}</b><span>${money(2 * C.price - C.pairDiscount)}</span><small>${t('co.pair.save', { s: money(C.pairDiscount) })}</small></button>
+      </div>` : '';
     return `${header()}
+      ${deal}
       <p class="co-label">${t('co.pick')}</p>
       ${rows}
-      ${qty() === 1 ? `<p class="co-hint">${t('co.pair.hint')}</p>` : ''}
+      ${two ? `<p class="co-hint">${t('co.pair.mix')}</p>` : ''}
       <div class="co-row"><label for="co-group">${t('co.group')}<span class="co-hint" style="display:block">${t('co.group.desc')} ${t('co.discount.hint')}</span></label>
         <input class="co-toggle" id="co-group" type="checkbox" ${S.group ? 'checked' : ''}></div>
       ${S.group ? `<div class="co-row"><span>${t('co.people')}</span>${stepper('data-people', S.people, t('co.people'), S.people > 2, S.people < C.maxGroup)}</div>
@@ -260,6 +266,7 @@
         p_coupon: S.couponInfo ? S.couponInfo.code : null
       });
       S.offline = false; S.active = null;
+      try { localStorage.setItem('sway-pending', JSON.stringify({ no: S.res.order_no, token: S.res.order_token, at: Date.now() })); } catch {}
       document.dispatchEvent(new CustomEvent('sway:order', { detail: { value: S.res.amount, qty: qty() } }));
     } catch (e) {
       const act = String(e && e.message).match(/active_order:(\d+)/);   // one active order per phone
@@ -285,6 +292,13 @@
       return dlg.querySelector(`[data-cq-${c}="${d}"]:not(:disabled)`)?.focus();
     }
     // tapping a colour name: a single hammock switches colour; with several, it just shows that fabric
+    const qs = el.closest('[data-qset]');
+    if (qs) {   // one or a pair: a pair doubles the colour already chosen (the customer can split it below)
+      const c = view();
+      if (qs.dataset.qset === '1') Object.assign(S, { blue: c === 'blue' ? 1 : 0, brown: c === 'brown' ? 1 : 0 });
+      else if (qty() < 2) S[c] = 2;
+      render(); return dlg.querySelector(`[data-qset="${qs.dataset.qset}"]`)?.focus();
+    }
     const pick = el.closest('[data-pick]');
     if (pick) {
       const c = pick.dataset.pick;
@@ -301,6 +315,7 @@
     }
     if (el.closest('[data-next]')) { S.step = 2; render(); document.dispatchEvent(new Event('sway:details')); return dlg.querySelector('input')?.focus(); }
     if (el.closest('[data-coupon-apply]')) return applyCoupon(dlg.querySelector('#co-coupon').value).then(() => dlg.querySelector('#co-coupon')?.focus());
+    if (el.closest('a[href*="wa.me"]') && S.res && S.step === 3) document.dispatchEvent(new CustomEvent('sway:confirm', { detail: { value: S.res.amount } }));
     if (el.closest('[data-new-order]')) { Object.assign(S, { step: 1, res: null, offline: false, active: null }); return render(); }
     if (el.closest('[data-back]')) { S.f = readForm(dlg.querySelector('form')); S.step = 1; return render(); }
     const paid = el.closest('[data-paid]'); if (paid) api('report_share_paid', { p_token: paid.dataset.paid }).catch(() => {});
@@ -380,6 +395,20 @@
       <p>${paid === d.people ? t('ord.all') : t('pay.progress', { paid, n: d.people })}</p>
       <ul class="shares">${rows}</ul>`;
   }
+
+  // an order made here but not yet confirmed on WhatsApp: a thin bar on every visit until it is, or the hour is over
+  (async () => {
+    let p; try { p = JSON.parse(localStorage.getItem('sway-pending') || 'null'); } catch {}
+    if (!p || Date.now() - p.at > 3600e3) { try { localStorage.removeItem('sway-pending'); } catch {} return; }
+    const d = await api('get_order_v2', { p_token: p.token }).catch(() => null);
+    if (!d || d.status !== 'pending') { try { localStorage.removeItem('sway-pending'); } catch {} return; }
+    const bar = document.createElement('div');
+    bar.className = 'pend-bar'; bar.setAttribute('role', 'status');
+    const paint = () => { bar.innerHTML = `<span>${t('pend.bar', { no: p.no })}</span><a href="${wa(t('co.wa.confirm', { no: p.no }))}" target="_blank" rel="noopener">${t('co.confirm.btn')}</a><button type="button" aria-label="${t('close')}">×</button>`;
+      bar.querySelector('button').onclick = () => bar.remove(); };
+    paint(); document.addEventListener('langchange', paint);
+    document.body.appendChild(bar);
+  })();
 
   const page = document.body.dataset.page;
   if (page) {

@@ -358,8 +358,8 @@ html.a11y-noanim{scroll-behavior:auto!important}
 html.a11y-contrast{--sway-blue:#000;--sway-ivory:#fff;--sway-ink:#000;--sway-coral:#ffd400;--sway-muted:#000;--sway-rule:#000;--sway-paper:#fff}
 html.a11y-contrast .film-stage:after{background:#000a!important}
 html.a11y-contrast a{text-decoration:underline}
-html.a11y-fontlg .sway-site,html.a11y-fontlg .purchase-dialog{zoom:1.15}
-html.a11y-fontsm .sway-site,html.a11y-fontsm .purchase-dialog{zoom:.9}
+html.a11y-fontlg .sway-site,html.a11y-fontlg .purchase-dialog,html.a11y-fontlg body.page{zoom:1.15}
+html.a11y-fontsm .sway-site,html.a11y-fontsm .purchase-dialog,html.a11y-fontsm body.page{zoom:.9}
 html.a11y-readable,html.a11y-readable *{font-family:Arial,Helvetica,sans-serif!important;letter-spacing:.01em!important}
 html.a11y-headings h1,html.a11y-headings h2,html.a11y-headings h3{outline:2px dashed #c2412a!important;outline-offset:6px}
 html.a11y-links a,html.a11y-links button:not([role=switch]):not(#a11y-btn){outline:2px solid #2563eb!important;text-decoration:underline!important}
@@ -541,3 +541,18 @@ html[lang=he] [lang=en],html[lang=en] [lang=he]{display:none}
 .co-coupon__row button{height:44px;padding:0 18px;border:1px solid var(--sway-ink);border-radius:10px;background:none;font:700 14px var(--sway-sans);color:var(--sway-ink);cursor:pointer}
 .co-coupon__ok{color:#2f7a5b!important;font-weight:700}
 .sukkot .closing-purchase{color:var(--sway-ink);border-bottom-color:var(--sway-ink)}
+
+/* one or a pair, in the order dialog */
+.co-deal{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 18px}
+.co-deal__opt{display:grid;gap:2px;justify-items:start;text-align:start;padding:14px 16px;border:1.5px solid var(--sway-rule);border-radius:14px;background:#fff;color:var(--sway-ink);cursor:pointer;position:relative}
+.co-deal__opt b{font-size:15px}
+.co-deal__opt span{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.co-deal__opt small{font-size:12px;font-weight:700;color:#a3321f}
+.co-deal__opt.is-on{border-color:var(--sway-ink);box-shadow:0 0 0 1px var(--sway-ink)}
+.co-deal__opt:focus-visible{outline:3px solid var(--sway-ink);outline-offset:2px}
+/* an unconfirmed order, until it is confirmed on WhatsApp */
+.pend-bar{position:fixed;inset-inline:12px;top:12px;z-index:60;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-radius:14px;background:var(--sway-ivory);color:var(--sway-ink);box-shadow:0 12px 30px -12px #0006;font:600 14px/1.4 var(--sway-sans)}
+.pend-bar a{background:var(--sway-coral);color:var(--sway-ink);padding:7px 14px;border-radius:999px;text-decoration:none;font-weight:700}
+.pend-bar button{margin-inline-start:auto;border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:inherit}
+
+.band--ivory :focus-visible,.purchase-dialog :focus-visible,body.page :focus-visible,.sukkot :focus-visible{outline-color:var(--sway-ink)!important}

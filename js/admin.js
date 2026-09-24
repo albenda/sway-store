@@ -76,13 +76,13 @@ const payBtns = (o, size, short) => ['paybox', 'bit'].map(m =>
 const receipt = (o, s) => `קבלה\nלקוח: ${o.name}\nטלפון: ${o.phone}${o.email ? `\nדוא״ל: ${o.email}` : ''}\nפריט: ערסל Sway, ${items(o)}\nסכום: ${s.amount} ₪\nאמצעי תשלום: ${METHOD[s.method] || 'לא צוין'}\nתאריך: ${new Date(s.confirmed_at || Date.now()).toLocaleDateString('he-IL')}\nאסמכתא: ${ref(o, s)}`;
 
 // ---------- state + data ----------
-const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, recurring: [], purchases: [], sent: new Set(), bc: { who: 'buyers', text: '' }, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
+const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, walog: [], recurring: [], purchases: [], sent: new Set(), bc: { who: 'buyers', text: '' }, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
 const must = r => { if (r.error) throw r.error; return r; };
 
 let seq = 0, snap = '';
 async function load() {
   const my = ++seq;
-  const [o, r, i, l, cp, ex, ev, st, cn, rs, rp, re, pu] = await Promise.all([
+  const [o, r, i, l, cp, ex, ev, st, cn, rs, rp, re, pu, wl] = await Promise.all([
     sb.from('orders_v2').select('*, order_shares(*)').order('created_at', { ascending: false }).limit(1000),
     sb.from('reviews').select('*, orders_v2(order_no)').order('created_at', { ascending: false }).limit(200),
     sb.from('inventory').select('*').order('colour'),
@@ -95,11 +95,12 @@ async function load() {
     sb.from('resellers').select('*').order('name'),
     sb.from('reseller_payments').select('*').order('day', { ascending: false }),
     sb.from('recurring_expenses').select('*').order('created_at'),
-    sb.from('purchases').select('*').order('ordered_on', { ascending: false })
+    sb.from('purchases').select('*').order('ordered_on', { ascending: false }),
+    sb.from('wa_log').select('*').order('at', { ascending: false }).limit(400)
   ]);
   must(o);
   if (my !== seq) return null;                  // a newer load already landed
-  const next = JSON.stringify([o.data, r.data, i.data, l.data, cp.data, ex.data, ev.data, st.data, cn.data, rs.data, rp.data, re.data, pu.data]);
+  const next = JSON.stringify([o.data, r.data, i.data, l.data, cp.data, ex.data, ev.data, st.data, cn.data, rs.data, rp.data, re.data, pu.data, wl.data]);
   if (next === snap) return null;               // nothing changed: no re-render, no lost taps
   snap = next;
   const before = S.orders;
@@ -111,7 +112,7 @@ async function load() {
   if (/^\d+$/.test(S.settings.price || '')) C.price = +S.settings.price;
   if (/^\d+$/.test(S.settings.pair_discount || '')) C.pairDiscount = +S.settings.pair_discount;
   S.notes = Object.fromEntries((cn.data || []).map(x => [x.phone, x]));
-  S.resellers = rs.data || []; S.rpay = rp.data || []; S.recurring = re.data || []; S.purchases = pu.data || [];
+  S.resellers = rs.data || []; S.rpay = rp.data || []; S.recurring = re.data || []; S.purchases = pu.data || []; S.walog = wl.data || [];
   S.errs = [['ביקורות', r], ['הוצאות', ex], ['היסטוריה', ev], ['לקוחות', cn], ['ספקים', rs], ['תשלומי ספקים', rp]].filter(([, x]) => x.error).map(([n]) => n);
   return before;
 }
@@ -170,6 +171,11 @@ function bcList() {
     vip: (S.notes[c.phone]?.tags || []).includes('VIP'), repeat: c.orders > 1, quiet: c.paid > 0 && Date.now() - lastOf(c) > 90 * 864e5 })[S.bc.who]);
 }
 
+// WhatsApp messages the bot sent, and whether Meta delivered them
+const WAS = { sent: ['נשלחה', 'pill--new'], delivered: ['נמסרה', 'pill--ok'], read: ['נקראה', 'pill--ok'], failed: ['לא נמסרה', 'pill--cancelled'] };
+const whoTo = p => p === intl(dadPhone() || '0') ? 'אבא' : p === intl(C.bitPhone.replace(/\D/g, '')) ? 'אליך' : null;
+const msgRows = list => list.map(m => `<div class="wamsg"><span class="pill ${WAS[m.status][1]}">${WAS[m.status][0]}</span>
+  <span><b>${whoTo(m.to_phone) || 'ללקוח'}</b> · ${when(m.at)}${m.kind === 'template' ? ' · תבנית' : ''}<small>${esc(m.preview || '')}</small>${m.error ? `<small class="err">${esc(m.error)}</small>` : ''}</span></div>`).join('');
 const errBanner = () => S.errs?.length ? `<div class="note" role="alert">חלק מהנתונים לא נטענו (${S.errs.join(', ')}). המספרים יכולים להיות חסרים. לרענן את הדף.</div>` : '';
 
 // ---------- round 2: history, funnel, abandoned orders, coupons, profit ----------
@@ -262,6 +268,10 @@ function tasks() {
     if (noInv.length) add(0, 'receipt', null, `להוציא חשבונית ל${esc(r.name)}`, `${noInv.length} תשלומים בלי מספר חשבונית · ${ils(noInv.reduce((a, p) => a + p.amount, 0))}`,
       `<button class="btn btn--line btn--sm" data-rsl="${r.id}">כרטיס</button>`);
   }
+  const failed = S.walog.filter(m => m.status === 'failed' && hours(m.at) < 24);
+  if (failed.length) add(2, 'wa', null, failed.length === 1 ? 'הודעה אחת לא נמסרה' : `${failed.length} הודעות לא נמסרו`,
+    'בדרך כלל כי עברו 24 שעות מההודעה האחרונה של הנמען. כדאי לשלוח ידנית',
+    `<details class="rcpts"><summary>לראות</summary>${msgRows(failed)}</details>`);
   for (const k of stock()) if (k.low) add(1, 'stock', null, `מלאי נמוך: ${COLOUR[k.colour]}`, `נשארו ${k.free} פנויים`, '<a class="btn btn--line btn--sm" href="#stock">למלאי</a>');
   const pend = S.reviews.filter(r => r.status === 'pending').length;
   if (pend) add(0, 'star', null, pend === 1 ? 'ביקורת מחכה לאישור' : `${pend} ביקורות מחכות לאישור`, 'לא מתפרסמות באתר עד שמאשרים', '<a class="btn btn--line btn--sm" href="#people" data-ppl="reviews">לביקורות</a>');
@@ -834,6 +844,8 @@ function orderDrawer(o) {
         <a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(dadPhone(), dadText(o))}">${ic('wa', 'ic--sm')}לשלוח לאבא</a></section>` : ''}
       ${eventsOf(o).length ? `<section class="panel box"><h3>היסטוריה</h3><ol class="tl">${eventsOf(o).map(e =>
         `<li><b>${e.kind === 'new' && o.source === 'whatsapp' && e === eventsOf(o)[0] ? 'נפתחה בבוט' : EV[e.kind] || esc(e.kind)}</b><span>${when(e.at)}${byWhom(e.by_whom) ? ' · ' + esc(byWhom(e.by_whom)) : ''}</span></li>`).join('')}</ol></section>` : ''}
+      ${(() => { const ms = S.walog.filter(m => m.order_no === o.order_no || m.to_phone === intl(o.phone)).slice(0, 12);
+        return ms.length ? `<section class="panel box"><h3>הודעות וואטסאפ</h3>${msgRows(ms)}</section>` : ''; })()}
       <form class="panel box" data-note="${o.id}"><h3><label for="an">הערה פנימית (רק אתה רואה)</label></h3>
         <div class="field" style="margin:0"><textarea id="an" name="note" maxlength="1000" placeholder="למשל: יאסוף ביום שלישי, אבא מביא">${esc(o.admin_note || '')}</textarea></div>
         <button class="btn btn--line btn--sm" style="margin-top:8px">שמירת הערה</button></form>

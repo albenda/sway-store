@@ -23,7 +23,9 @@
     const ev = (ga, fb, params) => { if (window.gtag) gtag('event', ga, params); if (window.fbq) fbq('track', fb, params); };
     document.addEventListener('sway:checkout', () => ev('begin_checkout', 'InitiateCheckout', { currency: 'ILS', value: C.price }));
     document.addEventListener('sway:details', () => ev('add_shipping_info', 'AddPaymentInfo', { currency: 'ILS' }));
-    document.addEventListener('sway:order', e => ev('purchase', 'Purchase', { currency: 'ILS', value: e.detail.value }));
+    // an order is only real after the WhatsApp confirmation: the form is a lead, tapping "confirm" is the purchase signal
+    document.addEventListener('sway:order', e => ev('generate_lead', 'Lead', { currency: 'ILS', value: e.detail.value }));
+    document.addEventListener('sway:confirm', e => ev('purchase', 'Purchase', { currency: 'ILS', value: e.detail.value }));
   }
 
   if (choice === 'yes') return load();
