@@ -24,7 +24,7 @@
   <link rel="preload" href="assets/film/poster-mobile.webp" as="image" fetchpriority="high" media="(max-width: 860px)">
   <link rel="preload" href="assets/fonts/FrankRuhlLibre-400-hebrew.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/Assistant-var-hebrew.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/sway.css?v=56">
+  <link rel="stylesheet" href="css/sway.css?v=57">
 </head>
 <body data-lp="balcony">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -148,7 +148,7 @@
           <div class="chapter-panel closing-panel">
             <h2 data-i18n="yours.title">מוכנים<br>לשכב?</h2>
             <p data-i18n="yours.body">בוחרים צבע ומזמינים.</p>
-            <p class="closing-price"><b>₪450</b><s data-i18n="price.was">במקום ₪700</s><span data-i18n="yours.ship">החזר מלא עד 30 יום</span></p>
+            <p class="closing-price"><b>₪450</b><s data-i18n="price.was">במקום ₪700</s><span data-i18n="yours.ship">כל הזמנה מאושרת אישית · החזר מלא עד 30 יום</span></p>
             <button type="button" class="closing-purchase" data-order><span data-i18n="cta.choose">בחרו את שלכם</span><svg class="i i-flip" width="27" height="27"><use href="#i-up"/></svg></button>
             <br><button type="button" class="closing-alt" data-order="group" data-i18n="offer.group">או לקנות יחד עם חברים</button>
           </div>
@@ -176,7 +176,7 @@
       <div class="sukkot-copy">
         <span class="tiny-rule"></span>
         <h2 id="sukkot-title" data-i18n="sk.title">סוכה, מרפסת, חוף.<br>אותו ערסל.</h2>
-        <p data-i18n="sk.body">עוד 10% הנחה על ₪450, עד 10.10. מקלידים את הקוד בהזמנה, או לוחצים כאן והוא כבר בפנים.</p>
+        <p data-i18n="sk.body">עוד 10% הנחה עד 10.10. מזמינים מכאן, והקוד כבר בפנים.</p>
         <div class="sukkot-code"><span dir="ltr">SUKKOT2026</span><button type="button" data-copy-code="SUKKOT2026" data-i18n="sk.copy">העתקה</button></div>
         <button type="button" class="closing-purchase" data-order data-coupon="SUKKOT2026"><span data-i18n="sk.cta">להזמין עם ההנחה</span><svg class="i i-flip" width="27" height="27"><use href="#i-up"/></svg></button>
       </div>
@@ -195,14 +195,14 @@
           <div class="ar-photo"><img src="assets/img/terrace.webp" width="1280" height="720" loading="lazy" data-i18n-attr="alt:ar.alt" alt=""></div>
           <p class="small-label" data-i18n="ar.kicker">במצלמה של הנייד</p>
           <h3 data-i18n="ar.h">במידות אמת.</h3>
-          <p class="panel-text" data-i18n="ar.frame"></p>
+          <p class="panel-text" data-i18n="ar.frame">הערסל מופיע בגודל האמיתי, בתוך מסגרת אדומה של המקום שהוא תופס: 1.6 מטר על הרצפה, ו־3.3 מטר בגובה 1.1 מטר. קיר או רהיט שחוצים את הקו האדום? אין מספיק מקום. בלי אפליקציה.</p>
           <button class="save-selection" type="button" data-ar-open><span data-i18n="ar.btn">לראות אצלי ב־AR</span><svg class="i" width="20" height="20"><use href="#i-cube"/></svg></button>
           <div class="ar-qr" data-ar-qr hidden><div data-qr></div><p data-i18n="ar.qr"></p></div>
         </div>
         <div class="panel" id="fit" data-state="">
           <p class="small-label" data-i18n="fit.kicker">מודדים בבית</p>
           <h3 data-i18n="fit.title">זה ייכנס לי?</h3>
-          <p class="panel-text" data-i18n="fit.body"></p>
+          <p class="panel-text" data-i18n="fit.body">מודדים עם מטר בגובה המותניים, שם הערסל הכי ארוך: 300 ס״מ. כדי שיהיה מקום להתנדנד, עדיף 330×150. על הרצפה הרגליים תופסות רק 150 ס״מ, אז רהיט נמוך נכנס מתחת לקצוות.</p>
           <form class="fit-form" data-fit novalidate>
             <label class="field"><span data-i18n="fit.len">אורך המקום (ס״מ)</span><input name="len" type="number" inputmode="numeric" min="50" max="3000" placeholder="400" dir="ltr"></label>
             <label class="field"><span data-i18n="fit.wid">רוחב המקום (ס״מ)</span><input name="wid" type="number" inputmode="numeric" min="50" max="3000" placeholder="200" dir="ltr"></label>
@@ -223,7 +223,7 @@
         <span class="tiny-rule"></span>
         <p class="small-label" data-i18n="group.kicker">קנייה חברית</p>
         <h2 id="group-title" data-i18n="group.title">קונים יחד.<br>כל אחד משלם את שלו.</h2>
-        <p data-i18n="group.body"></p>
+        <p data-i18n="group.body">מ־3 ערסלים, ₪20 הנחה על כל ערסל. ואף אחד לא צריך לרדוף אחרי חברים עם ביט.</p>
       </div>
       <ol class="group-steps">
         <li><span class="step-n">1</span><p data-i18n="group.s1"></p></li>
@@ -282,9 +282,9 @@
               </dl>
             </div>
           </details>
-          <details><summary><span data-i18n="faq.q1"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a1"></p></details>
-          <details><summary><span data-i18n="faq.q2"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a2"></p></details>
-          <details><summary><span data-i18n="faq.q3"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a3"></p></details>
+          <details><summary><span data-i18n="faq.q1"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a1">כן. המעמד רחב ויציב: בטוח עד 150 ק״ג, ומחזיק עד 250 ק״ג.</p></details>
+          <details><summary><span data-i18n="faq.q2"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a2">כשתי דקות. מחברים את המעמד, מהדקים את ברגי הפרפר ביד ותולים את הבד. בלי כלים.</p></details>
+          <details><summary><span data-i18n="faq.q3"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a3">בשביל זה הוא נבנה. הכל נכנס לתיק של 8 ק״ג עם רצועת כתף, והמעמד עומד על חול, דשא או דק.</p></details>
           <details><summary><span data-i18n="faq.q4"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a4"></p></details>
           <details><summary><span data-i18n="faq.q5"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a5"></p></details>
           <details><summary><span data-i18n="faq.q6"></span><svg class="i" width="15" height="15"><use href="#i-plus"/></svg></summary><p data-i18n="faq.a6"></p></details>
@@ -297,7 +297,7 @@
 
   <footer class="sway-footer">
     <div class="footer-top">
-      <p data-i18n="foot.line">ערסל אחד.<br>כל מקום.</p>
+      <p data-i18n="foot.line">הרהיט היחיד בבית<br>שלא מבקש ממך כלום.</p>
       <div class="footer-links">
         <a href="#colours"><span data-i18n="foot.l1">מצאו את הצבע</span><svg class="i i-flip" width="16" height="16"><use href="#i-up"/></svg></a>
         <a href="#details"><span data-i18n="foot.l2">הכירו את הערסל</span><svg class="i i-flip" width="16" height="16"><use href="#i-up"/></svg></a>
@@ -334,11 +334,11 @@
   <p class="ar-hint" data-i18n="ar.hint"></p>
 </dialog>
 
-<script src="js/config.js?v=56"></script>
-<script src="js/analytics.js?v=56" defer></script>
-<script src="js/a11y.js?v=56" defer></script>
-<script src="js/i18n.js?v=56"></script>
-<script src="js/order.js?v=56" defer></script>
-<script src="js/site.js?v=56" defer></script>
+<script src="js/config.js?v=57"></script>
+<script src="js/analytics.js?v=57" defer></script>
+<script src="js/a11y.js?v=57" defer></script>
+<script src="js/i18n.js?v=57"></script>
+<script src="js/order.js?v=57" defer></script>
+<script src="js/site.js?v=57" defer></script>
 </body>
 </html>
