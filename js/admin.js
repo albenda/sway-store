@@ -44,8 +44,9 @@ const ST = { pending: 'לא אישר בוואטסאפ', new: 'ממתין לתש�
 const PICK = { ashdod: 'אשדוד', nesziona: 'נס ציונה', courier: 'שליח (ברקוד)' };
 const METHOD = { paybox: 'PayBox', bit: 'ביט', transfer: 'העברה', cash: 'מזומן', other: 'אחר' };
 const COLOUR = { blue: 'כחול ים', brown: 'חום חול' };
-const VIEWS = { today: ['היום', 'today'], orders: ['הזמנות', 'orders'], money: ['כסף', 'money'], partners: ['ספקים', 'truck'], marketing: ['שיווק', 'tag'], site: ['אתר', 'chart'], stock: ['מלאי', 'stock'], people: ['לקוחות', 'people'] };
-const PHONE_TABS = ['today', 'orders', 'money', 'partners'];
+// by how often they are used: the first four are the phone's tab bar, the rest sit under "עוד" (same order on the desktop rail)
+const VIEWS = { today: ['היום', 'today'], orders: ['הזמנות', 'orders'], money: ['כסף', 'money'], site: ['אתר', 'chart'], marketing: ['שיווק', 'tag'], people: ['לקוחות', 'people'], stock: ['מלאי', 'stock'], partners: ['ספקים', 'truck'] };
+const PHONE_TABS = ['today', 'orders', 'money', 'site'];
 
 const blue = o => o.qty_blue || (o.colour === 'blue' ? o.qty : 0);
 const brown = o => o.qty_brown || (o.colour === 'brown' ? o.qty : 0);
