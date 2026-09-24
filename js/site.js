@@ -249,7 +249,7 @@
       document.head.appendChild(s);
     });
   }
-  const arSrc = () => `assets/3d/sway-${state.colour}-ar.glb`;
+  const arSrc = () => `assets/3d/sway-${state.colour}-ar.glb?v=3`;  // bump when the models change
   document.addEventListener('colourchange', () => { const mv = $('model-viewer', arStage); if (mv) mv.src = arSrc(); });
   $$('[data-ar-open]').forEach(b => b.addEventListener('click', () => {
     if (!arStage.firstChild) {
