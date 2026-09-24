@@ -107,6 +107,9 @@ async function load() {
   // round-2 tables (sway_v6_admin2.sql); null until that migration runs, and the views say so
   S.coupons = cp.error ? null : cp.data; S.expenses = ex.data || []; S.events = ev.data || [];
   S.settings = Object.fromEntries((st.data || []).map(x => [x.key, x.value]));
+  // manual orders and partner discounts use the live list price
+  if (/^\d+$/.test(S.settings.price || '')) C.price = +S.settings.price;
+  if (/^\d+$/.test(S.settings.pair_discount || '')) C.pairDiscount = +S.settings.pair_discount;
   S.notes = Object.fromEntries((cn.data || []).map(x => [x.phone, x]));
   S.resellers = rs.data || []; S.rpay = rp.data || []; S.recurring = re.data || []; S.purchases = pu.data || [];
   S.errs = [['ביקורות', r], ['הוצאות', ex], ['היסטוריה', ev], ['לקוחות', cn], ['ספקים', rs], ['תשלומי ספקים', rp]].filter(([, x]) => x.error).map(([n]) => n);
@@ -775,12 +778,24 @@ function orderDrawer(o) {
 }
 
 const acctDrawer = () => `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh">
-  <header class="drawer__head"><h2 id="dh" tabindex="-1">החשבון שלי</h2><button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
+  <header class="drawer__head"><h2 id="dh" tabindex="-1">הגדרות וחשבון</h2><button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
   <div class="drawer__body"><dl class="panel kv"><dt>שם משתמש</dt><dd>${esc(userOf(S.me))}</dd><dt>דוא״ל</dt><dd>${esc(S.me)}</dd></dl>
     <form class="panel box" data-settings><h3>הגדרות</h3>
       <label class="field"><span>עלות ערסל ליחידה (₪), לחישוב רווח</span><input name="unit_cost" type="number" inputmode="numeric" min="0" value="${esc(S.settings.unit_cost || '')}"></label>
       <label class="field"><span>תקרת עוסק פטור לשנה (₪)</span><input name="patur_cap" type="number" inputmode="numeric" min="0" value="${esc(S.settings.patur_cap || '122833')}"></label>
       <label class="field"><span>הטלפון של אבא (מקבל הודעה על כל תשלום)</span><input name="dad_phone" inputmode="tel" dir="ltr" pattern="05[0-9]{8}" value="${esc(S.settings.dad_phone || '')}"></label>
+      <button class="btn btn--main">שמירה</button></form>
+    <form class="panel box cform" data-shop><h3>מחירים והנחות (האתר, הבוט וההזמנות מתעדכנים לבד)</h3>
+      ${[['price', 'מחיר לערסל (₪)'], ['anchor', 'מחיר ״במקום״ (₪)'], ['pair_discount', 'הנחה לכל זוג (₪)'], ['group_discount', 'הנחת קבוצה לכל ערסל (₪)'], ['group_min', 'קבוצה מכמה ערסלים']]
+        .map(([k, l]) => `<label class="field"><span>${l}</span><input name="${k}" type="number" inputmode="numeric" min="0" required value="${esc(S.settings[k] ?? '')}"></label>`).join('')}
+      <p class="hint" style="grid-column:1/-1">זוג יעלה ${ils(2 * (+S.settings.price || C.price) - (+S.settings.pair_discount || 0))}. הזמנות קיימות נשארות במחיר שבו נפתחו.</p>
+      <h3 style="grid-column:1/-1;margin-top:8px">איסוף</h3>
+      <label class="check"><input type="checkbox" name="ashdod_on"${S.settings.ashdod_on === '0' ? '' : ' checked'}>איסוף מאשדוד פעיל</label>
+      <label class="field"><span>כתובת באשדוד</span><input name="ashdod_address" maxlength="80" value="${esc(S.settings.ashdod_address || '')}"></label>
+      <label class="field"><span>ימים</span><input name="ashdod_days" maxlength="30" value="${esc(S.settings.ashdod_days || '')}"></label>
+      <label class="field"><span>שעות</span><input name="ashdod_hours" maxlength="30" dir="ltr" value="${esc(S.settings.ashdod_hours || '')}"></label>
+      <label class="check"><input type="checkbox" name="nesziona_on"${S.settings.nesziona_on === '0' ? '' : ' checked'}>איסוף מנס ציונה פעיל</label>
+      <label class="field"><span>נס ציונה: תוך כמה ימים</span><input name="nesziona_days" maxlength="10" dir="ltr" value="${esc(S.settings.nesziona_days || '')}"></label>
       <button class="btn btn--main">שמירה</button></form>
     <form class="panel box" data-pw><h3>החלפת סיסמה</h3>${pwFields()}<button class="btn btn--main">שמירת סיסמה</button><p class="msg" role="status"></p></form></div>
   <footer class="drawer__foot"><button class="btn btn--bad" data-logout>יציאה</button></footer></aside>`;
@@ -884,11 +899,11 @@ function render(force) {
   app.innerHTML = `<div class="shell">
     <aside class="rail">${MARK}<nav class="nav" aria-label="ניווט ראשי">${links}</nav>
       <button class="btn btn--line btn--sm kbtn" data-palette>${ic('search', 'ic--sm')}חיפוש מהיר <kbd>⌘K</kbd></button>
-      <div class="rail__foot">${liveTag}<button class="linkish" data-acct>${esc(userOf(S.me))} · החשבון</button></div></aside>
+      <div class="rail__foot">${liveTag}<button class="linkish" data-acct>${esc(userOf(S.me))} · הגדרות</button></div></aside>
     <main class="main"><div class="mtop">${MARK}${liveTag}<button class="btn btn--ghost btn--icon" data-palette aria-label="חיפוש מהיר">${ic('search')}</button><button class="btn btn--ghost btn--icon" data-acct aria-label="החשבון שלי">${ic('user')}</button></div>
       ${{ today: viewToday, orders: viewOrders, money: viewMoney, partners: viewPartners, marketing: viewMarketing, stock: viewStock, people: viewPeople }[v]()}</main>
     <nav class="tabbar" aria-label="ניווט ראשי">${tabs}</nav>
-    ${S.more ? `<div class="scrim" data-mclose></div><div class="sheet" role="dialog" aria-label="עוד">${rest.map(link).join('')}<button type="button" data-acct>${ic('user')}<span>החשבון שלי</span></button></div>` : ''}</div>
+    ${S.more ? `<div class="scrim" data-mclose></div><div class="sheet" role="dialog" aria-label="עוד">${rest.map(link).join('')}<button type="button" data-acct>${ic('user')}<span>הגדרות וחשבון</span></button></div>` : ''}</div>
     ${S.palette ? paletteBox() : o ? orderDrawer(o) : S.rsl ? rslDrawer(S.rsl) : S.cust ? custDrawer(S.cust) : S.acct ? acctDrawer() : ''}`;
   document.documentElement.classList.toggle('lock', !!key);
   if (scroll) $('.drawer__body').scrollTop = scroll;
@@ -1252,6 +1267,14 @@ app.addEventListener('submit', async e => {
     const dp = f.dad_phone.value.replace(/\D/g, '').replace(/^972/, '0');
     if (dp && !/^05\d{8}$/.test(dp)) return toast('טלפון בפורמט 05XXXXXXXX', null, true);
     return act(btn, async () => must(await sb.from('settings').upsert([{ key: 'unit_cost', value: f.unit_cost.value || null }, { key: 'dad_phone', value: dp || null }, { key: 'patur_cap', value: f.patur_cap.value || '122833' }])), 'ההגדרות נשמרו');
+  }
+  if (d.shop != null) {
+    if (!f.ashdod_on.checked && !f.nesziona_on.checked) return toast('צריך לפחות נקודת איסוף אחת פעילה', null, true);
+    if (+f.price.value < 1) return toast('מחיר לא תקין', null, true);
+    const rows = ['price', 'anchor', 'pair_discount', 'group_discount', 'group_min', 'ashdod_address', 'ashdod_days', 'ashdod_hours', 'nesziona_days']
+      .map(k => ({ key: k, value: f[k].value.trim() })).filter(x => x.value !== '')
+      .concat([{ key: 'ashdod_on', value: f.ashdod_on.checked ? '1' : '0' }, { key: 'nesziona_on', value: f.nesziona_on.checked ? '1' : '0' }]);
+    return act(btn, async () => must(await sb.from('settings').upsert(rows)), 'נשמר. האתר והבוט מתעדכנים מיד');
   }
   if (d.cnote) return act(btn, async () => must(await sb.from('customer_notes').upsert({ phone: d.cnote, note: f.note.value.trim() || null,
     tags: [...f.querySelectorAll('[name=tags]:checked')].map(x => x.value), updated_at: new Date().toISOString() })), 'נשמר');

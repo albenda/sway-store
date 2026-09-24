@@ -137,8 +137,10 @@
 
   // Ashdod (by appointment) or Nes Ziona (the owner's father brings it over: 2-3 days)
   function pickupChoice() {
+    const on = ['ashdod', 'nesziona'].filter(k => !(C.pickupOff || []).includes(k));
+    if (on.length && !on.includes(S.f.pickup)) S.f.pickup = on[0];   // a point switched off on the admin page
     return `<fieldset class="co-pickup"><legend class="co-label">${t('co.pickup')}</legend>
-      ${['ashdod', 'nesziona'].map(k => `<label class="co-opt"><input type="radio" name="pickup" value="${k}" ${S.f.pickup === k ? 'checked' : ''}>
+      ${['ashdod', 'nesziona'].filter(k => !(C.pickupOff || []).includes(k)).map(k => `<label class="co-opt"><input type="radio" name="pickup" value="${k}" ${S.f.pickup === k ? 'checked' : ''}>
         <span><b>${t('pk.' + k)}</b><small>${t('pk.' + k + '.note')}</small></span></label>`).join('')}</fieldset>`;
   }
 
@@ -311,6 +313,7 @@
   dlg.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'co-coupon') { e.preventDefault(); applyCoupon(e.target.value).then(() => dlg.querySelector('#co-coupon')?.focus()); } });
   dlg.addEventListener('submit', e => { e.preventDefault(); submit(e.target); });
   document.addEventListener('langchange', () => { if (dlg.open) render(); });
+  document.addEventListener('shopchange', () => { if (dlg.open) render(); });
 
   const urlCoupon = new URLSearchParams(location.search).get('coupon');
   if (urlCoupon) S.coupon = urlCoupon;

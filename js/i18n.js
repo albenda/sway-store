@@ -693,5 +693,29 @@ const I18N = {
     const desc = document.querySelector('meta[name="description"]');
     if (desc) desc.content = this.t('meta.desc');
     document.dispatchEvent(new CustomEvent('langchange', { detail: lang }));
+  },
+  // prices and pickup details edited on the admin page (settings table, read through shop_settings()).
+  // The texts in this file and in the pages hold the defaults; they are swapped in one pass wherever they appear.
+  shop(v) {
+    const C = window.SWAY, num = (k, d) => (/^\d+$/.test(v[k] ?? '') ? +v[k] : d);
+    const price = num('price', C.price), anchor = num('anchor', C.anchor), pair = num('pair_discount', C.pairDiscount);
+    const map = new Map([['₪' + C.price, '₪' + price], ['₪' + C.anchor, '₪' + anchor], ['₪' + (2 * C.price - C.pairDiscount), '₪' + (2 * price - pair)],
+      ['רחוב המתכת 21', v.ashdod_address], ['08:30-14:30', v.ashdod_hours], ['א׳-ה׳', v.ashdod_days], ['2-3', v.nesziona_days]].filter(([a, b]) => b && a !== b));
+    Object.assign(C, { price, anchor, pairDiscount: pair, pickupOff: ['ashdod', 'nesziona'].filter(k => v[k + '_on'] === '0'),
+      groupDiscount: { perUnit: num('group_discount', C.groupDiscount.perUnit), minQty: num('group_min', C.groupDiscount.minQty) } });
+    if (map.size) {
+      const re = new RegExp([...map.keys()].map(k => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')).join('|'), 'g');
+      const sub = x => x.replace(re, m => map.get(m));
+      for (const lang of Object.keys(DICT)) for (const k in DICT[lang]) DICT[lang][k] = sub(DICT[lang][k]);
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let n; (n = w.nextNode());) { const t = sub(n.nodeValue); if (t !== n.nodeValue) n.nodeValue = t; }
+      this.set(this.lang, false);
+    }
+    document.dispatchEvent(new Event('shopchange'));
   }
 };
+// the shop's live settings (one small request; the page works with the defaults if it fails)
+if (typeof window !== 'undefined' && window.SWAY?.supabaseUrl) addEventListener('DOMContentLoaded', () => {
+  fetch(`${SWAY.supabaseUrl}/rest/v1/rpc/shop_settings`, { method: 'POST', headers: { apikey: SWAY.supabaseKey, 'Content-Type': 'application/json' }, body: '{}' })
+    .then(r => (r.ok ? r.json() : null)).then(v => v && I18N.shop(v)).catch(() => {});
+});
