@@ -43,9 +43,6 @@ const DICT = {
     'cmp.r5.t': 'תלוי בקשירה',
     'cmp.r5.w': 'התקנה חד־פעמית',
     'season.sukkot': 'לסוכות: ערסל לסוכה, למרפסת ולחול המועד',
-    'wx.sunset': 'השקיעה היום ב־{t}',
-    'wx.sat': 'בשבת {d}°, {w}',
-    'wx.0': 'בהיר', 'wx.1': 'מעונן חלקית', 'wx.2': 'ערפילי', 'wx.3': 'גשום', 'wx.4': 'סוער',
 
     'col.kicker': 'שני צבעים. מצב רוח אחד.',
     'col.title': 'בחרו את סוג\nהרוגע שלכם.',
@@ -349,9 +346,6 @@ const DICT = {
     'cmp.r5.t': 'Depends on the knots',
     'cmp.r5.w': 'One-time installation',
     'season.sukkot': 'For Sukkot: a hammock for the sukkah, the balcony and the holiday week',
-    'wx.sunset': 'Sunset today at {t}',
-    'wx.sat': 'Saturday {d}°, {w}',
-    'wx.0': 'clear', 'wx.1': 'partly cloudy', 'wx.2': 'foggy', 'wx.3': 'rainy', 'wx.4': 'stormy',
 
     'col.kicker': 'Two colours. One state of mind.',
     'col.title': 'Pick your\nkind of calm.',

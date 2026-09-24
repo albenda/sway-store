@@ -179,30 +179,18 @@
     $('#reviews').hidden = false;
   }).catch(() => {});
 
-  /* ---------- season line, sunset + Saturday forecast, evening mode ---------- */
+  /* ---------- season line, evening mode (dusk blue after sunset in Israel) ---------- */
   const today = new Date().toISOString().slice(0, 10);
   $$('[data-season]').forEach(el => {
     const [from, to] = el.dataset.season.split(':');
     el.hidden = !(today >= from && today < to);
   });
-  const WX = c => (c <= 1 ? 0 : c <= 3 ? 1 : c <= 48 ? 2 : c <= 82 ? 3 : 4);
-  fetch('https://api.open-meteo.com/v1/forecast?latitude=32.08&longitude=34.78&daily=temperature_2m_max,weathercode,sunrise,sunset&timezone=Asia%2FJerusalem&forecast_days=7')
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=32.08&longitude=34.78&daily=sunrise,sunset&timezone=Asia%2FJerusalem&forecast_days=1')
     .then(r => r.json()).then(d => {
       // API times are Israel wall-clock without offset: convert with the offset it reports
       const at = x => new Date(Date.parse(x + ':00Z') - d.utc_offset_seconds * 1000);
-      const D = d.daily, sunset = at(D.sunset[0]), sunrise = at(D.sunrise[0]), now = new Date();
-      document.documentElement.classList.toggle('evening', now > sunset || now < sunrise);
-      const sat = D.time.findIndex(x => new Date(x + 'T12:00:00Z').getUTCDay() === 6);
-      const draw = () => {
-        const el = $('[data-weather]');
-        const hhmm = sunset.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
-        const parts = [I18N.t('wx.sunset', { t: hhmm })];
-        if (sat >= 0) parts.push(I18N.t('wx.sat', { d: Math.round(D.temperature_2m_max[sat]), w: I18N.t('wx.' + WX(D.weathercode[sat])) }));
-        el.textContent = parts.join(' · ');
-        el.hidden = false;
-      };
-      draw();
-      document.addEventListener('langchange', draw);
+      const now = new Date();
+      document.documentElement.classList.toggle('evening', now > at(d.daily.sunset[0]) || now < at(d.daily.sunrise[0]));
     }).catch(() => {});
 
   /* ---------- will it fit? (top view, cm) ---------- */
