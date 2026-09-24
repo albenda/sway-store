@@ -387,3 +387,14 @@ a.stat:hover{background:#fffaf0}
 
 .pricebtn{border:0;background:none;padding:2px 4px;border-radius:6px;cursor:pointer;color:inherit;font:inherit}
 .pricebtn:hover{background:var(--blue-soft)}
+
+/* ---------- round 3 ---------- */
+.pbar{height:12px;border-radius:6px;background:var(--rule);overflow:hidden;margin:4px 0 10px}
+.pbar i{display:block;height:100%;background:var(--ok);border-radius:6px}
+.patur--warn .pbar i{background:var(--coral-ink)}
+details.panel summary{cursor:pointer;font-weight:700;font-size:14px;list-style:none}
+details.panel summary::-webkit-details-marker{display:none}
+details.panel summary:before{content:"+ ";color:var(--coral-ink)}
+details[open].panel summary:before{content:"− "}
+#rmonth{min-height:34px;border:1px solid var(--rule-2);border-radius:999px;background:var(--card);padding:0 10px}
+.tbl tr.off td{opacity:.55}

@@ -76,13 +76,13 @@ const payBtns = (o, size, short) => ['paybox', 'bit'].map(m =>
 const receipt = (o, s) => `קבלה\nלקוח: ${o.name}\nטלפון: ${o.phone}${o.email ? `\nדוא״ל: ${o.email}` : ''}\nפריט: ערסל Sway, ${items(o)}\nסכום: ${s.amount} ₪\nאמצעי תשלום: ${METHOD[s.method] || 'לא צוין'}\nתאריך: ${new Date(s.confirmed_at || Date.now()).toLocaleDateString('he-IL')}\nאסמכתא: ${ref(o, s)}`;
 
 // ---------- state + data ----------
-const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
+const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, recurring: [], purchases: [], sent: new Set(), bc: { who: 'buyers', text: '' }, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
 const must = r => { if (r.error) throw r.error; return r; };
 
 let seq = 0, snap = '';
 async function load() {
   const my = ++seq;
-  const [o, r, i, l, cp, ex, ev, st, cn, rs, rp] = await Promise.all([
+  const [o, r, i, l, cp, ex, ev, st, cn, rs, rp, re, pu] = await Promise.all([
     sb.from('orders_v2').select('*, order_shares(*)').order('created_at', { ascending: false }).limit(1000),
     sb.from('reviews').select('*, orders_v2(order_no)').order('created_at', { ascending: false }).limit(200),
     sb.from('inventory').select('*').order('colour'),
@@ -93,11 +93,13 @@ async function load() {
     sb.from('settings').select('*'),
     sb.from('customer_notes').select('*'),
     sb.from('resellers').select('*').order('name'),
-    sb.from('reseller_payments').select('*').order('day', { ascending: false })
+    sb.from('reseller_payments').select('*').order('day', { ascending: false }),
+    sb.from('recurring_expenses').select('*').order('created_at'),
+    sb.from('purchases').select('*').order('ordered_on', { ascending: false })
   ]);
   must(o);
   if (my !== seq) return null;                  // a newer load already landed
-  const next = JSON.stringify([o.data, r.data, i.data, l.data, cp.data, ex.data, ev.data, st.data, cn.data, rs.data, rp.data]);
+  const next = JSON.stringify([o.data, r.data, i.data, l.data, cp.data, ex.data, ev.data, st.data, cn.data, rs.data, rp.data, re.data, pu.data]);
   if (next === snap) return null;               // nothing changed: no re-render, no lost taps
   snap = next;
   const before = S.orders;
@@ -106,7 +108,7 @@ async function load() {
   S.coupons = cp.error ? null : cp.data; S.expenses = ex.data || []; S.events = ev.data || [];
   S.settings = Object.fromEntries((st.data || []).map(x => [x.key, x.value]));
   S.notes = Object.fromEntries((cn.data || []).map(x => [x.phone, x]));
-  S.resellers = rs.data || []; S.rpay = rp.data || [];
+  S.resellers = rs.data || []; S.rpay = rp.data || []; S.recurring = re.data || []; S.purchases = pu.data || [];
   S.errs = [['ביקורות', r], ['הוצאות', ex], ['היסטוריה', ev], ['לקוחות', cn], ['ספקים', rs], ['תשלומי ספקים', rp]].filter(([, x]) => x.error).map(([n]) => n);
   return before;
 }
@@ -134,6 +136,35 @@ function toast(text, no, bad) {
   t.innerHTML = `<span>${esc(text)}</span>${no ? `<button data-go="#orders/${no}">פתיחה</button>` : ''}`;
   t.hidden = false;
   clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, bad ? 8000 : 5000);
+}
+
+// income this calendar year (Israel): customer payments (minus refunds) + partner payments. The exempt-dealer ceiling counts this.
+function yearIncome() {
+  const y = todayIL().slice(0, 4), from = Date.parse(`${y}-01-01T00:00:00+02:00`);
+  return payments('all').filter(x => x.t >= from).reduce((a, x) => a + x.s.amount, 0)
+    + S.rpay.filter(p => p.day.startsWith(y)).reduce((a, p) => a + p.amount, 0);
+}
+const paturCap = () => +S.settings.patur_cap || 122833;
+// printable packing labels: one per order, cut and stick on the box
+function printLabels(list) {
+  const w = window.open('', '_blank');
+  if (!w) return toast('הדפדפן חסם חלון חדש. לאפשר חלונות קופצים לאתר.', null, true);
+  const box = o => `<section><h1>Sway ${o.order_no}</h1><h2>${esc(o.name)}</h2><p class="ph">${esc(o.phone)}</p>
+    <p class="it">${items(o)}</p><p>${o.pickup === 'courier' ? 'שליח (ברקוד מהספק)' : 'איסוף: ' + (PICK[o.pickup] || '')}</p>
+    ${o.is_gift ? `<p>מתנה${o.gift_note ? ': “' + esc(o.gift_note) + '”' : ''}</p>` : ''}${o.admin_note ? `<p class="nt">${esc(o.admin_note)}</p>` : ''}<p class="d">${day(o.created_at)}</p></section>`;
+  w.document.write(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><title>תוויות Sway</title><style>
+    body{font-family:Arial,sans-serif;margin:0;display:flex;flex-wrap:wrap;gap:0}
+    section{width:50%;box-sizing:border-box;padding:18px 20px;border:1px dashed #999;page-break-inside:avoid;min-height:9.5cm}
+    h1{font-size:34px;margin:0 0 6px}h2{font-size:24px;margin:0}.ph{font-size:18px;direction:ltr;text-align:right}.it{font-size:22px;font-weight:bold}.nt{border:1px solid #000;padding:6px}.d{color:#555}
+    @media print{@page{size:A4;margin:8mm}}</style>${list.map(box).join('')}<script>onload=()=>print()<\/script>`);
+  w.document.close();
+}
+const BCAST = { buyers: 'כל מי שקנה', collected: 'מי שכבר אסף', vip: 'מתויגים VIP', repeat: 'לקוחות חוזרים', quiet: 'לא הזמינו 90 יום' };
+function bcList() {
+  const cs = customers().filter(c => c.orders > 0);
+  const lastOf = c => Math.max(...S.orders.filter(o => o.phone === c.phone).map(o => Date.parse(o.created_at)));
+  return cs.filter(c => ({ buyers: c.paid > 0, collected: S.orders.some(o => o.phone === c.phone && o.status === 'collected'),
+    vip: (S.notes[c.phone]?.tags || []).includes('VIP'), repeat: c.orders > 1, quiet: c.paid > 0 && Date.now() - lastOf(c) > 90 * 864e5 })[S.bc.who]);
 }
 
 const errBanner = () => S.errs?.length ? `<div class="note" role="alert">חלק מהנתונים לא נטענו (${S.errs.join(', ')}). המספרים יכולים להיות חסרים. לרענן את הדף.</div>` : '';
@@ -213,6 +244,7 @@ function tasks() {
       add(2, 'wa', o, 'אבא עוד לא אישר', `Sway ${o.order_no} · ${items(o)} · שולם ${ago(paidAt)}`,
         `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(dadPhone(), dadText(o))}">${ic('wa', 'ic--sm')}לשלוח לאבא שוב</a>${open(o)}`);
   }
+  if (S.coupons) { const pct = yearIncome() / paturCap(); if (pct >= 0.85) add(1, 'money', null, `${Math.round(pct * 100)}% מתקרת עוסק פטור`, `נשארו ${ils(paturCap() - yearIncome())} השנה. לדבר עם רואה החשבון`, '<a class="btn btn--line btn--sm" href="#money">לפרטים</a>'); }
   for (const r of S.resellers) {
     const od = overdue(r);
     if (od.length) add(1, 'truck', null, `לגבות מ${esc(r.name)}: ${ils(od.reduce((a, x) => a + x.left, 0))}`, `עברו ${od[0].days} ימים מההזמנה הכי ישנה (תנאי תשלום: ${r.terms_days ?? 30} יום)`,
@@ -341,9 +373,27 @@ function viewOrders() {
     body = `<div class="panel rows"><div class="row row--head" aria-hidden="true"><span>מס׳</span><span>לקוח</span><span>פריטים</span><span>סכום</span><span>מצב</span><span></span></div>
       ${list.map(row).join('') || `<p class="empty"><b>לא נמצאו הזמנות</b>${S.q ? 'אפשר לחפש לפי שם, טלפון או מספר.' : ''}</p>`}</div>`;
   }
+  const toPack = S.orders.filter(o => o.status === 'paid');
   return top('הזמנות', `${S.orders.filter(live).length} פתוחות`, true) +
+    `<div class="tmpl" style="margin-bottom:12px"><button class="btn btn--main btn--sm" data-mnew>${ic('plus', 'ic--sm')}הזמנה ידנית</button>
+      ${toPack.length ? `<button class="btn btn--line btn--sm" data-printall>${ic('receipt', 'ic--sm')}תוויות לכל מה שצריך להכין (${toPack.length})</button>` : ''}</div>
+    ${S.mnew ? manualForm() : ''}` +
     chips('mode', [['board', 'לוח עבודה'], ['all', 'כל ההזמנות', S.orders.length], ['pending', 'לא אישרו בוואטסאפ', n('pending')], ['cancelled', 'בוטלו', n('cancelled')]], mode) +
     `<div class="sec">${body}</div>`;
+}
+
+function manualForm() {
+  return `<form class="panel box cform" data-manual><h3>הזמנה ידנית (לקוח בטלפון או פנים אל פנים)</h3>
+    <label class="field"><span>שם</span><input name="name" required minlength="2" maxlength="80"></label>
+    <label class="field"><span>טלפון</span><input name="phone" required inputmode="tel" dir="ltr" placeholder="05XXXXXXXX"></label>
+    <label class="field"><span>${COLOUR.blue}</span><input name="blue" type="number" inputmode="numeric" min="0" max="10" value="1"></label>
+    <label class="field"><span>${COLOUR.brown}</span><input name="brown" type="number" inputmode="numeric" min="0" max="10" value="0"></label>
+    <label class="field"><span>איסוף</span><select name="pickup"><option value="ashdod">${PICK.ashdod}</option><option value="nesziona">${PICK.nesziona}</option></select></label>
+    <label class="field"><span>מחיר ליחידה (₪)</span><input name="price" type="number" inputmode="numeric" min="0" value="${C.price}"></label>
+    <label class="field"><span>הנחה על כל ההזמנה (₪, ריק = אוטומטית)</span><input name="discount" type="number" inputmode="numeric" min="0" placeholder="זוג: ₪${C.pairDiscount}"></label>
+    <label class="field"><span>כבר שילם?</span><select name="paid"><option value="">עוד לא</option>${Object.entries(METHOD).map(([k, l]) => `<option value="${k}">כן, ב${l}</option>`).join('')}</select></label>
+    <label class="field" style="grid-column:1/-1"><span>הערה פנימית</span><input name="note" maxlength="300"></label>
+    <button class="btn btn--main">פתיחת הזמנה</button></form>`;
 }
 
 function viewMoney() {
@@ -368,7 +418,9 @@ function viewMoney() {
       <div class="panel kpi"><span>ממוצע להזמנה</span><b class="num">${ils(paidOrders.length ? rev / paidOrders.length : 0)}</b><small>אחרי הנחות</small></div>
       <div class="panel kpi"><span>ממתין לתשלום</span><b class="num">${ils(waiting.reduce((a, o) => a + due(o), 0))}</b><small>${waiting.length} הזמנות פתוחות</small></div>
     </section>
+    ${paturBox()}
     ${profitBox(rev, units)}
+    ${channelBox()}
     ${funnelBox()}
     <section class="sec panel chart" aria-label="הכנסות לאורך זמן"><div class="chart__bars">${bars.map(b =>
       `<div class="${b.v ? '' : 'z'}" style="height:${b.v ? Math.max(4, b.v / max * 100) : 2}%" title="${b.label}: ${ils(b.v)}"></div>`).join('')}</div>
@@ -383,7 +435,63 @@ function viewMoney() {
       <tbody>${pays.map(x => `<tr><td class="num">${day(x.t)}</td><td><button data-open="${x.o.order_no}">${ref(x.o, x.s)}</button></td><td>${esc(x.o.name)}</td>
         <td>${METHOD[x.s.method] || 'לא צוין'}${x.o.status === 'cancelled' ? ' <span class="pill pill--cancelled">בוטל, להחזיר?</span>' : ''}</td><td class="r num">${ils(x.s.amount)}</td><td>${x.s.receipt_no ? `<span class="num">${esc(x.s.receipt_no)}</span>` : '<span class="pill pill--new">חסרה</span>'}</td></tr>`).join('')
         || '<tr><td colspan="6" class="empty">אין תשלומים בתקופה הזו.</td></tr>'}</tbody></table></div></section>
-    ${expensesBox()}`;
+    ${expensesBox()}
+    ${recurringBox()}
+    ${reportBox()}`;
+}
+
+function paturBox() {
+  const inc = yearIncome(), cap = paturCap(), pct = Math.min(100, Math.round(inc / cap * 100));
+  return `<section class="sec panel box patur${pct >= 80 ? ' patur--warn' : ''}"><h3>תקרת עוסק פטור · ${todayIL().slice(0, 4)}</h3>
+    <div class="pbar"><i style="width:${pct}%"></i></div>
+    <div class="pl"><span>הכנסות השנה</span><b class="num">${ils(inc)} <small>(${pct}%)</small></b></div>
+    <div class="pl"><span>נשאר עד התקרה</span><b class="num">${ils(Math.max(0, cap - inc))}</b></div>
+    ${pct >= 80 ? `<p class="hint"><b>מתקרבים לתקרה.</b> מעבר לה חייבים לעבור לעוסק מורשה. כדאי לדבר עם רואה החשבון עכשיו.</p>` : ''}
+    <p class="hint">התקרה (${ils(cap)}) נערכת בהגדרות החשבון. לפי תשלומים שאושרו, כולל ספקים.</p></section>`;
+}
+function channelBox() {
+  const from = since(S.period), uc = +S.settings.unit_cost || 0;
+  const rows = [];
+  const add = (label, pays, units) => { if (pays || units) rows.push({ label, pays, units, gross: pays - units * uc }); };
+  const pay = payments(S.period);
+  const unitsOf = list => [...new Set(list.map(x => x.o))].reduce((a, o) => a + o.qty, 0);
+  for (const [src, label] of [['site', 'אתר'], ['whatsapp', 'בוט וואטסאפ'], ['manual', 'הזמנות ידניות']]) {
+    const l = pay.filter(x => x.o.source === src); add(label, l.reduce((a, x) => a + x.s.amount, 0), unitsOf(l));
+  }
+  for (const r of S.resellers) add(r.name, S.rpay.filter(p => p.reseller_id === r.id && Date.parse(p.day + 'T12:00:00') >= from).reduce((a, p) => a + p.amount, 0),
+    rsOrders(r).filter(o => Date.parse(o.created_at) >= from).reduce((a, o) => a + o.qty, 0));
+  const coupons = [...new Set(S.orders.filter(o => o.coupon && Date.parse(o.created_at) >= from && !['pending', 'cancelled'].includes(o.status)).map(o => o.coupon))];
+  return `<section class="sec panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>ערוץ · ${PERIODS[S.period]}</th><th class="r">נכנס</th><th class="r">ערסלים</th><th class="r">רווח גולמי${uc ? '' : ' *'}</th></tr></thead><tbody>
+    ${rows.map(x => `<tr><td>${esc(x.label)}</td><td class="r num">${ils(x.pays)}</td><td class="r num">${x.units}</td><td class="r num">${ils(x.gross)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">אין מכירות בתקופה.</td></tr>'}
+    ${coupons.map(c => { const os = S.orders.filter(o => o.coupon === c && Date.parse(o.created_at) >= from && !['pending', 'cancelled'].includes(o.status));
+      return `<tr><td>קופון <b dir="ltr">${esc(c)}</b></td><td class="r num">${ils(os.reduce((a, o) => a + o.amount, 0))}</td><td class="r num">${os.reduce((a, o) => a + o.qty, 0)}</td><td class="r num"><small>הנחה ${ils(os.reduce((a, o) => a + o.discount, 0))}</small></td></tr>`; }).join('')}
+    </tbody></table>${uc ? '' : '<p class="hint" style="padding:0 16px 12px">* בלי עלות ליחידה, הרווח הגולמי שווה להכנסה. להגדיר בחשבון.</p>'}</section>`;
+}
+function recurringBox() {
+  return `<section class="sec"><h2>הוצאות קבועות <span class="count">${ils(S.recurring.filter(x => x.active).reduce((a, x) => a + x.amount, 0))} בחודש</span>
+      <button class="btn btn--line btn--sm" data-booknow style="margin-inline-start:auto">לרשום עכשיו את מה שהגיע</button></h2>
+    <details class="panel box"><summary>הוספת הוצאה קבועה</summary><form class="cform" data-recur style="margin-top:10px">
+      <label class="field"><span>שם</span><input name="name" required maxlength="80" placeholder="למשל: דומיין, פרסום קבוע"></label>
+      <label class="field"><span>סוג</span><select name="category">${Object.entries(EXP).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></label>
+      <label class="field"><span>סכום בחודש (₪)</span><input name="amount" type="number" inputmode="numeric" min="1" required></label>
+      <label class="field"><span>יום בחודש</span><input name="day" type="number" inputmode="numeric" min="1" max="28" value="1"></label>
+      <button class="btn btn--main">הוספה</button></form></details>
+    ${S.recurring.length ? `<div class="panel"><table class="tbl"><tbody>${S.recurring.map(x => `<tr${x.active ? '' : ' class="off"'}><td>${esc(x.name)}</td><td>${EXP[x.category]}</td><td>כל ${x.day} בחודש</td>
+      <td class="r num">${ils(x.amount)}</td><td class="acts"><button class="btn btn--line btn--sm" data-rtoggle="${x.id}">${x.active ? 'השהיה' : 'הפעלה'}</button><button class="btn btn--ghost btn--sm" data-rdel="${x.id}">מחיקה</button></td></tr>`).join('')}</tbody></table></div>` : ''}</section>`;
+}
+function reportBox() {
+  const months = [...Array(12)].map((_, k) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - k); return d.toLocaleDateString('sv-SE', { timeZone: TZ }).slice(0, 7); });
+  return `<section class="sec panel box"><h3>דוח חודשי לרואה החשבון</h3>
+    <div class="tmpl"><select id="rmonth" aria-label="חודש">${months.map(m => `<option value="${m}">${m.slice(5)}/${m.slice(0, 4)}</option>`).join('')}</select>
+    <button class="btn btn--line btn--sm" data-report="csv">${ic('download', 'ic--sm')}אקסל</button><button class="btn btn--line btn--sm" data-report="print">${ic('receipt', 'ic--sm')}הדפסה / PDF</button></div>
+    <p class="hint">כל ההכנסות עם מספרי קבלות וחשבוניות, תשלומי ספקים והוצאות, לחודש שבוחרים.</p></section>`;
+}
+function monthData(m) {
+  const inM = t => new Date(t).toLocaleDateString('sv-SE', { timeZone: TZ }).startsWith(m);
+  const inc = payments('all').filter(x => inM(x.t)).sort((a, b) => a.t - b.t);
+  const rsp = S.rpay.filter(p => p.day.startsWith(m)).sort((a, b) => a.day.localeCompare(b.day));
+  const exp = S.expenses.filter(x => x.day.startsWith(m)).sort((a, b) => a.day.localeCompare(b.day));
+  return { inc, rsp, exp, totIn: inc.reduce((a, x) => a + x.s.amount, 0) + rsp.reduce((a, p) => a + p.amount, 0), totEx: exp.reduce((a, x) => a + x.amount, 0) };
 }
 
 const inPeriod = t => Date.parse(t) >= since(S.period);
@@ -507,12 +615,14 @@ function viewMarketing() {
 function viewStock() {
   if (!S.inv) return top('מלאי') + `<div class="panel empty"><b>המלאי עוד לא מחובר</b>צריך להריץ פעם אחת את עדכון מסד הנתונים (sway_v4_admin.sql).</div>`;
   const ks = stock();
-  return top('מלאי', 'יורד לבד כשמסמנים הזמנה כ״נאסף״') +
+  const incoming = c => S.purchases.filter(p => ['ordered', 'shipped'].includes(p.status)).reduce((a, p) => a + (c === 'blue' ? p.qty_blue : p.qty_brown), 0);
+  return top('מלאי', 'יורד לבד כשמסמנים הזמנה כ״נאסף״, ועולה כשרכש מתקבל') + purchasesBox() +
     `<section class="sec stock">${ks.map(k => `<article class="panel sk${k.low ? ' sk--low' : ''}">
       <div class="sk__h"><i class="sw sw--${k.colour}"></i>${COLOUR[k.colour]}${k.low ? '<span class="pill pill--cancelled" style="margin-inline-start:auto">נמוך</span>' : ''}</div>
       <div class="sk__big"><b class="num">${k.free}</b><span>פנויים למכירה</span></div>
       <div class="sk__row"><span>במחסן</span><b class="num">${k.on_hand}</b></div>
       <div class="sk__row"><span>שמורים להזמנות פתוחות</span><b class="num">${k.held}</b></div>
+      ${incoming(k.colour) ? `<div class="sk__row"><span>בדרך מהמפעל</span><b class="num">${incoming(k.colour)}</b></div>` : ''}
       <div class="sk__row"><span>התראה מתחת ל־</span><b class="num">${k.low_at}</b></div>
       <form class="adj" data-count="${k.colour}"><label class="sr" for="n-${k.colour}">כמה יש במחסן</label>
         <input id="n-${k.colour}" name="n" type="number" inputmode="numeric" min="0" max="9999" required placeholder="${k.on_hand}">
@@ -535,10 +645,45 @@ function customers() {
   }
   return [...by.values()];
 }
+const PST = { ordered: 'הוזמן', shipped: 'בדרך', received: 'התקבל', cancelled: 'בוטל' };
+function purchasesBox() {
+  const open = S.purchases.filter(p => ['ordered', 'shipped'].includes(p.status));
+  return `<section class="sec"><h2>רכש מהמפעל <span class="count">${open.length ? open.length + ' פתוחות' : ''}</span></h2>
+    <details class="panel box"${S.purchases.length ? '' : ' open'}><summary>הזמנת רכש חדשה</summary><form class="cform" data-purchase style="margin-top:10px">
+      <label class="field"><span>ספק / מפעל</span><input name="supplier" required maxlength="80" value="${esc(S.purchases[0]?.supplier || '')}"></label>
+      <label class="field"><span>תאריך הזמנה</span><input name="ordered" type="date" value="${todayIL()}" required></label>
+      <label class="field"><span>צפי הגעה</span><input name="eta" type="date"></label>
+      <label class="field"><span>${COLOUR.blue}</span><input name="blue" type="number" inputmode="numeric" min="0" value="0"></label>
+      <label class="field"><span>${COLOUR.brown}</span><input name="brown" type="number" inputmode="numeric" min="0" value="0"></label>
+      <label class="field"><span>עלות ליחידה (₪)</span><input name="unit" type="number" inputmode="numeric" min="0"></label>
+      <label class="field"><span>משלוח, מכס ועוד (₪)</span><input name="extra" type="number" inputmode="numeric" min="0" value="0"></label>
+      <label class="field"><span>הערה</span><input name="note" maxlength="300"></label>
+      <button class="btn btn--main">שמירה</button></form></details>
+    ${S.purchases.length ? `<div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>ספק</th><th>הוזמן</th><th>צפי</th><th class="r">כמות</th><th class="r">עלות</th><th>מצב</th><th></th></tr></thead><tbody>
+      ${S.purchases.map(p => `<tr${p.status === 'cancelled' ? ' class="off"' : ''}><td>${esc(p.supplier)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td class="num">${day(p.ordered_on + 'T12:00:00')}</td>
+        <td class="num">${p.eta ? day(p.eta + 'T12:00:00') : '—'}</td><td class="r">${p.qty_blue ? `<i class="sw sw--blue"></i>${p.qty_blue} ` : ''}${p.qty_brown ? `<i class="sw sw--brown"></i>${p.qty_brown}` : ''}</td>
+        <td class="r num">${p.unit_cost != null ? ils(p.unit_cost * (p.qty_blue + p.qty_brown) + p.extra_cost) : '—'}</td>
+        <td><span class="pill ${p.status === 'received' ? 'pill--ok' : p.status === 'cancelled' ? 'pill--cancelled' : 'pill--new'}">${PST[p.status]}${p.received_on ? ' ' + day(p.received_on + 'T12:00:00') : ''}</span></td>
+        <td class="acts">${p.status === 'ordered' ? `<button class="btn btn--line btn--sm" data-pship="${p.id}">בדרך</button>` : ''}${['ordered', 'shipped'].includes(p.status) ? `<button class="btn btn--main btn--sm" data-precv="${p.id}">התקבל</button><button class="btn btn--ghost btn--sm" data-pcancel="${p.id}">ביטול</button>` : ''}</td></tr>`).join('')}
+      </tbody></table></div>` : ''}</section>`;
+}
+
 function viewPeople() {
   const pend = S.reviews.filter(r => r.status === 'pending').length;
   let body;
-  if (S.ppl === 'reviews') {
+  if (S.ppl === 'broadcast') {
+    const list = bcList(), text = S.bc.text;
+    const msg = c => text.replace(/\{שם\}/g, first(c.name));
+    body = `<form class="panel box" data-bc><div class="chips" role="group">${Object.entries(BCAST).map(([k, l]) => `<button type="button" class="chip" data-bcwho="${k}" aria-pressed="${S.bc.who === k}">${l}</button>`).join('')}</div>
+        <div class="field" style="margin:12px 0 0"><label for="bct">ההודעה (אפשר {שם} כדי לפנות בשם)</label><textarea id="bct" name="text" maxlength="900" placeholder="היי {שם}, ...">${esc(text)}</textarea></div>
+        <button class="btn btn--main btn--sm" style="margin-top:8px">עדכון ההודעה</button>
+        <p class="hint">נשלח מהוואטסאפ שלך, אחד אחרי השני. זה בחינם. שליחה המונית מהבוט דורשת תבנית שיווק מאושרת ועולה כסף ל־Meta.</p></form>
+      <div class="panel sec"><div class="tmpl" style="padding:12px 16px 0">${list.length} נמענים · נשלחו ${list.filter(c => S.sent.has(c.phone)).length}
+        <button class="btn btn--line btn--sm" data-bccopy>העתקת כל המספרים</button></div>
+        ${list.map(c => `<div class="cust"><span><b>${esc(c.name)}</b><small class="num">${esc(c.phone)}</small></span><span>${c.orders} הזמנות</span><span></span>
+          <span class="cust__do">${S.sent.has(c.phone) ? '<span class="pill pill--ok">נשלח</span>' : text.trim() ? `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" data-bcsend="${esc(c.phone)}" href="${wa(c.phone, msg(c))}">${ic('wa', 'ic--sm')}שליחה</a>` : '<small>קודם לכתוב הודעה</small>'}</span></div>`).join('')
+        || '<p class="empty">אין לקוחות בקבוצה הזו.</p>'}</div>`;
+  } else if (S.ppl === 'reviews') {
     body = `<div class="panel">${S.reviews.map(r => {
       const img = r.photo_path ? `${C.supabaseUrl}/storage/v1/object/public/reviews/${r.photo_path}` : '';
       return `<article class="rev">${img ? `<img src="${esc(img)}" alt="תמונה מהלקוח" loading="lazy">` : '<span></span>'}<div>
@@ -559,10 +704,23 @@ function viewPeople() {
       || '<p class="empty"><b>לא נמצאו לקוחות</b></p>'}</div>`;
   }
   return top('לקוחות', `${customers().length} לקוחות`, S.ppl !== 'reviews') +
-    chips('ppl', [['customers', 'לקוחות'], ['reviews', 'ביקורות', pend || null]], S.ppl) + `<div class="sec">${body}</div>`;
+    chips('ppl', [['customers', 'לקוחות'], ['broadcast', 'הודעה לכמה לקוחות'], ['reviews', 'ביקורות', pend || null]], S.ppl) + `<div class="sec">${body}</div>`;
 }
 
 // ---------- drawers ----------
+// full edit while nobody paid yet; after a payment only name, phone and the colour split (same quantity, same price)
+function editForm(o) {
+  const paid = o.order_shares.some(s => s.status === 'confirmed');
+  return `<form class="panel box cform" data-oeditf="${o.id}"><h3>עריכת ההזמנה${paid ? ' (שולמה: אפשר לשנות פרטים וחלוקת צבעים)' : ''}</h3>
+    <label class="field"><span>שם</span><input name="name" required minlength="2" maxlength="80" value="${esc(o.name)}"></label>
+    <label class="field"><span>טלפון</span><input name="phone" required inputmode="tel" dir="ltr" value="${esc(o.phone)}"></label>
+    <label class="field"><span>${COLOUR.blue}</span><input name="blue" type="number" inputmode="numeric" min="0" max="10" value="${blue(o)}"></label>
+    <label class="field"><span>${COLOUR.brown}</span><input name="brown" type="number" inputmode="numeric" min="0" max="10" value="${brown(o)}"></label>
+    ${paid ? '' : `<label class="field"><span>מחיר ליחידה (₪)</span><input name="price" type="number" inputmode="numeric" min="0" value="${o.unit_price}"></label>
+    <label class="field"><span>הנחה על כל ההזמנה (₪)</span><input name="discount" type="number" inputmode="numeric" min="0" value="${o.discount}"></label>`}
+    <button class="btn btn--main">שמירה</button></form>`;
+}
+
 function orderDrawer(o) {
   const idx = { new: 0, paid: 1, ready: 2, collected: 3 }[o.status] ?? -1;
   const steps = ['ממתין לתשלום', 'שולם', 'מוכן', 'נאסף'];
@@ -580,6 +738,7 @@ function orderDrawer(o) {
   return `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh">
     <header class="drawer__head"><h2 id="dh" class="num" tabindex="-1">Sway ${o.order_no}</h2>${pill(o)}<button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
     <div class="drawer__body">
+      ${S.oedit === o.id ? editForm(o) : ''}
       ${idx >= 0 ? `<div><div class="steps">${steps.map((_, i) => `<span class="${i < idx ? 'on' : i === idx ? 'now' : ''}"></span>`).join('')}</div>
         <div class="steps-l">${steps.map(s => `<span>${s}</span>`).join('')}</div></div>` : ''}
       ${!o.reseller_id && S.notes[o.phone] ? `<div class="note">${(S.notes[o.phone].tags || []).map(t => `<span class="pill">${esc(t)}</span> `).join('')}${esc(S.notes[o.phone].note || '')}</div>` : ''}
@@ -612,7 +771,7 @@ function orderDrawer(o) {
         <div class="field" style="margin:0"><textarea id="an" name="note" maxlength="1000" placeholder="למשל: יאסוף ביום שלישי, אבא מביא">${esc(o.admin_note || '')}</textarea></div>
         <button class="btn btn--line btn--sm" style="margin-top:8px">שמירת הערה</button></form>
     </div>
-    <footer class="drawer__foot">${main}${BACK[o.status] ? `<button class="btn btn--ghost" data-st="${o.id}:${BACK[o.status]}">חזרה ל״${ST[BACK[o.status]]}״</button>` : ''}${['pending', 'new', 'paid', 'ready'].includes(o.status) ? `<button class="btn btn--bad" data-st="${o.id}:cancelled">ביטול הזמנה</button>` : ''}</footer></aside>`;
+    <footer class="drawer__foot">${main}${['new', 'paid'].includes(o.status) && !o.reseller_id && o.people === 1 ? `<button class="btn btn--ghost" data-oedit="${o.id}">עריכה</button>` : ''}<button class="btn btn--ghost" data-print1="${o.id}">תווית</button>${BACK[o.status] ? `<button class="btn btn--ghost" data-st="${o.id}:${BACK[o.status]}">חזרה ל״${ST[BACK[o.status]]}״</button>` : ''}${['pending', 'new', 'paid', 'ready'].includes(o.status) ? `<button class="btn btn--bad" data-st="${o.id}:cancelled">ביטול הזמנה</button>` : ''}</footer></aside>`;
 }
 
 const acctDrawer = () => `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh">
@@ -620,6 +779,7 @@ const acctDrawer = () => `<div class="scrim" data-close></div><aside class="draw
   <div class="drawer__body"><dl class="panel kv"><dt>שם משתמש</dt><dd>${esc(userOf(S.me))}</dd><dt>דוא״ל</dt><dd>${esc(S.me)}</dd></dl>
     <form class="panel box" data-settings><h3>הגדרות</h3>
       <label class="field"><span>עלות ערסל ליחידה (₪), לחישוב רווח</span><input name="unit_cost" type="number" inputmode="numeric" min="0" value="${esc(S.settings.unit_cost || '')}"></label>
+      <label class="field"><span>תקרת עוסק פטור לשנה (₪)</span><input name="patur_cap" type="number" inputmode="numeric" min="0" value="${esc(S.settings.patur_cap || '122833')}"></label>
       <label class="field"><span>הטלפון של אבא (מקבל הודעה על כל תשלום)</span><input name="dad_phone" inputmode="tel" dir="ltr" pattern="05[0-9]{8}" value="${esc(S.settings.dad_phone || '')}"></label>
       <button class="btn btn--main">שמירה</button></form>
     <form class="panel box" data-pw><h3>החלפת סיסמה</h3>${pwFields()}<button class="btn btn--main">שמירת סיסמה</button><p class="msg" role="status"></p></form></div>
@@ -857,6 +1017,7 @@ async function payAll(o, method = 'paybox') {
 app.addEventListener('click', async e => {
   if (e.target.closest('[data-pgo]')) { S.palette = false; return; }   // the link's hash change renders
   if (e.target.closest('.sheet a')) { S.more = false; return; }
+  const bs = e.target.closest('[data-bcsend]'); if (bs) { S.sent.add(bs.dataset.bcsend); setTimeout(() => render(true), 300); return; }
   const b = e.target.closest('button, a[data-ppl], [data-close], [data-pclose], [data-mclose]');
   if (!b) return;
   const d = b.dataset;
@@ -893,6 +1054,35 @@ app.addEventListener('click', async e => {
   if (d.refund) { if (!confirm('לסמן שהכסף הוחזר ללקוח? הוא יירד מההכנסות.')) return; return act(b, async () => must(await sb.from('order_shares').update({ refunded_at: new Date().toISOString() }).eq('id', d.refund)), 'נרשם שהכסף הוחזר'); }
   if (d.custFrom) { S.cust = d.custFrom; history.replaceState(null, '', '#' + route().v); return render(true); }
   if (d.stage) { S.stage = d.stage; return render(true); }
+  if (d.mnew != null) { S.mnew = !S.mnew; return render(true); }
+  if (d.oedit) { S.oedit = S.oedit === +d.oedit ? 0 : +d.oedit; return render(true); }
+  if (d.print1) return printLabels([byId(d.print1)]);
+  if (d.printall != null) return printLabels(S.orders.filter(o => o.status === 'paid'));
+  if (d.bcwho) { S.bc.who = d.bcwho; return render(true); }
+  if (d.bccopy != null) { const ok = await (navigator.clipboard?.writeText(bcList().map(c => c.phone).join('\n')).then(() => true, () => false) ?? false); return toast(ok ? 'המספרים הועתקו' : 'ההעתקה נחסמה', null, !ok); }
+  if (d.booknow != null) return act(b, async () => { const { data } = must(await sb.rpc('book_recurring')); toast(data ? `נרשמו ${data} הוצאות` : 'אין הוצאות קבועות שהגיע זמנן'); });
+  if (d.rtoggle) { const x = S.recurring.find(r => r.id === +d.rtoggle); return act(b, async () => must(await sb.from('recurring_expenses').update({ active: !x.active }).eq('id', x.id)), x.active ? 'הושהה' : 'פעיל'); }
+  if (d.rdel) { if (!confirm('למחוק את ההוצאה הקבועה? הוצאות שכבר נרשמו נשארות.')) return; return act(b, async () => must(await sb.from('recurring_expenses').delete().eq('id', d.rdel)), 'נמחק'); }
+  if (d.pship) return act(b, async () => must(await sb.from('purchases').update({ status: 'shipped' }).eq('id', d.pship)), 'סומן בדרך');
+  if (d.precv) { if (!confirm('לקבל את הרכש? המלאי יעלה, והעלות תירשם כהוצאה.')) return; return act(b, async () => must(await sb.rpc('receive_purchase', { p_id: +d.precv })), 'הרכש התקבל, המלאי עודכן'); }
+  if (d.pcancel) { if (!confirm('לבטל את הזמנת הרכש?')) return; return act(b, async () => must(await sb.from('purchases').update({ status: 'cancelled' }).eq('id', d.pcancel)), 'בוטל'); }
+  if (d.report) {
+    const m = $('#rmonth').value, x = monthData(m);
+    if (d.report === 'csv') return downloadCsv([['סוג', 'תאריך', 'פרטים', 'אמצעי', 'קבלה / חשבונית', 'סכום'],
+      ...x.inc.map(i => ['הכנסה', new Date(i.t).toLocaleDateString('he-IL', { timeZone: TZ }), `${ref(i.o, i.s)} · ${i.o.name}`, METHOD[i.s.method] || '', i.s.receipt_no || 'חסרה', i.s.amount]),
+      ...x.rsp.map(p => ['הכנסה מספק', p.day, S.resellers.find(r => r.id === p.reseller_id)?.name || '', METHOD[p.method] || 'העברה', p.receipt_no || 'חסרה', p.amount]),
+      ...x.exp.map(e => ['הוצאה', e.day, e.note || '', EXP[e.category], '', -e.amount]),
+      [], ['סה״כ הכנסות', '', '', '', '', x.totIn], ['סה״כ הוצאות', '', '', '', '', -x.totEx]], `sway-report-${m}.csv`);
+    const w = window.open('', '_blank');
+    if (!w) return toast('הדפדפן חסם חלון חדש', null, true);
+    const tr = (...c) => `<tr>${c.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`;
+    w.document.write(`<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><title>Sway דוח ${m}</title><style>body{font-family:Arial;margin:24px}table{width:100%;border-collapse:collapse;margin:8px 0 22px}td,th{border-bottom:1px solid #ccc;padding:6px;text-align:right}h1{margin:0}</style>
+      <h1>Sway · דוח חודשי ${m.slice(5)}/${m.slice(0, 4)}</h1><p>דילן השקעות, עוסק פטור · הכנסות ${ils(x.totIn)} · הוצאות ${ils(x.totEx)}</p>
+      <h2>הכנסות מלקוחות</h2><table><tr><th>תאריך</th><th>הזמנה</th><th>לקוח</th><th>אמצעי</th><th>קבלה</th><th>סכום</th></tr>${x.inc.map(i => tr(new Date(i.t).toLocaleDateString('he-IL', { timeZone: TZ }), ref(i.o, i.s), i.o.name, METHOD[i.s.method] || '', i.s.receipt_no || 'חסרה', ils(i.s.amount))).join('')}</table>
+      <h2>הכנסות מספקים</h2><table><tr><th>תאריך</th><th>ספק</th><th>אמצעי</th><th>חשבונית</th><th>סכום</th></tr>${x.rsp.map(p => tr(p.day, S.resellers.find(r => r.id === p.reseller_id)?.name || '', METHOD[p.method] || 'העברה', p.receipt_no || 'חסרה', ils(p.amount))).join('')}</table>
+      <h2>הוצאות</h2><table><tr><th>תאריך</th><th>סוג</th><th>פרטים</th><th>סכום</th></tr>${x.exp.map(e => tr(e.day, EXP[e.category], e.note || '', ils(e.amount))).join('')}</table><script>onload=()=>print()<\/script>`);
+    return w.document.close();
+  }
   if (d.revive) {
     const o = byId(d.revive);
     return act(b, async () => {
@@ -978,6 +1168,43 @@ app.addEventListener('submit', async e => {
     return enter({ user: data.user });
   }
   if (d.note) return act(btn, async () => must(await sb.from('orders_v2').update({ admin_note: f.note.value.trim() || null }).eq('id', d.note)), 'ההערה נשמרה');
+  if (d.manual != null) {
+    const phone = f.phone.value.replace(/\D/g, '').replace(/^(00)?972/, '0'), bl = +f.blue.value | 0, br = +f.brown.value | 0, qty = bl + br;
+    if (!/^05\d{8}$/.test(phone)) return toast('טלפון בפורמט 05XXXXXXXX', null, true);
+    if (!(qty >= 1 && qty <= 10)) return toast('בין 1 ל־10 ערסלים', null, true);
+    const price = f.price.value === '' ? C.price : +f.price.value;
+    const discount = f.discount.value === '' ? Math.floor(qty / 2) * C.pairDiscount : +f.discount.value, amount = Math.max(0, qty * price - discount);
+    return act(btn, async () => {
+      const { data, error } = await sb.from('orders_v2').insert({ status: 'new', source: 'manual', colour: bl && br ? 'mixed' : bl ? 'blue' : 'brown', qty, qty_blue: bl, qty_brown: br,
+        unit_price: price, discount, amount, pickup: f.pickup.value, name: f.name.value.trim(), phone, people: 1, admin_note: f.note.value.trim() || null }).select('id,order_no').single();
+      if (error) throw new Error(/one_active|duplicate/.test(error.message) ? 'ללקוח הזה כבר יש הזמנה פתוחה' : error.message);
+      const sh = must(await sb.from('order_shares').insert({ order_id: data.id, n: 1, amount }).select('id').single()).data;
+      if (f.paid.value) must(await sb.from('order_shares').update({ status: 'confirmed', method: f.paid.value, confirmed_at: new Date().toISOString() }).eq('id', sh.id));
+      S.mnew = false; toast(`נפתחה Sway ${data.order_no}${f.paid.value ? ', שולמה, ואבא מקבל אותה' : ''}`, data.order_no);
+    });
+  }
+  if (d.oeditf) {
+    const o = byId(d.oeditf), paid = o.order_shares.some(s => s.status === 'confirmed');
+    const phone = f.phone.value.replace(/\D/g, '').replace(/^(00)?972/, '0'), bl = +f.blue.value | 0, br = +f.brown.value | 0, qty = bl + br;
+    if (!/^05\d{8}$/.test(phone)) return toast('טלפון בפורמט 05XXXXXXXX', null, true);
+    if (!(qty >= 1 && qty <= 10)) return toast('בין 1 ל־10 ערסלים', null, true);
+    if (paid && qty !== o.qty) return toast(`ההזמנה שולמה: אפשר לשנות צבעים, אבל הכמות נשארת ${o.qty}`, null, true);
+    const row = { name: f.name.value.trim(), phone, qty_blue: bl, qty_brown: br, colour: bl && br ? 'mixed' : bl ? 'blue' : 'brown' };
+    if (!paid) { row.qty = qty; row.unit_price = +f.price.value; row.discount = +f.discount.value || 0; row.amount = Math.max(0, qty * row.unit_price - row.discount); }
+    return act(btn, async () => {
+      const { data } = must(await sb.from('orders_v2').update(row).eq('id', o.id).eq('status', o.status).select('id'));
+      if (!data.length) throw new Error('changed');
+      if (!paid) must(await sb.from('order_shares').update({ amount: row.amount }).eq('order_id', o.id).eq('n', 1));
+      S.oedit = 0;
+    }, 'ההזמנה עודכנה');
+  }
+  if (d.bc != null) { S.bc.text = f.text.value; return render(true); }
+  if (d.recur != null) return act(btn, async () => must(await sb.from('recurring_expenses').insert({ name: f.name.value.trim(), category: f.category.value, amount: +f.amount.value, day: +f.day.value || 1 })), 'נוספה הוצאה קבועה');
+  if (d.purchase != null) {
+    if (!(+f.blue.value + +f.brown.value > 0)) return toast('כמה ערסלים הוזמנו?', null, true);
+    return act(btn, async () => must(await sb.from('purchases').insert({ supplier: f.supplier.value.trim(), ordered_on: f.ordered.value, eta: f.eta.value || null, qty_blue: +f.blue.value || 0,
+      qty_brown: +f.brown.value || 0, unit_cost: f.unit.value === '' ? null : +f.unit.value, extra_cost: +f.extra.value || 0, note: f.note.value.trim() || null })), 'הזמנת הרכש נשמרה');
+  }
   if (d.couponNew != null) {
     const code = f.code.value.replace(/\s+/g, '').toUpperCase(), value = +f.value.value, kind = f.kind.value;
     if (!/^[A-Z0-9\u0590-\u05FF]{3,20}$/.test(code)) return toast('קוד: 3-20 אותיות או ספרות, בלי רווחים', null, true);
@@ -1024,7 +1251,7 @@ app.addEventListener('submit', async e => {
   if (d.settings != null) {
     const dp = f.dad_phone.value.replace(/\D/g, '').replace(/^972/, '0');
     if (dp && !/^05\d{8}$/.test(dp)) return toast('טלפון בפורמט 05XXXXXXXX', null, true);
-    return act(btn, async () => must(await sb.from('settings').upsert([{ key: 'unit_cost', value: f.unit_cost.value || null }, { key: 'dad_phone', value: dp || null }])), 'ההגדרות נשמרו');
+    return act(btn, async () => must(await sb.from('settings').upsert([{ key: 'unit_cost', value: f.unit_cost.value || null }, { key: 'dad_phone', value: dp || null }, { key: 'patur_cap', value: f.patur_cap.value || '122833' }])), 'ההגדרות נשמרו');
   }
   if (d.cnote) return act(btn, async () => must(await sb.from('customer_notes').upsert({ phone: d.cnote, note: f.note.value.trim() || null,
     tags: [...f.querySelectorAll('[name=tags]:checked')].map(x => x.value), updated_at: new Date().toISOString() })), 'נשמר');
