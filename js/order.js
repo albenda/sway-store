@@ -154,6 +154,10 @@
   }
 
   function step3() {
+    if (S.active) {
+      return `${header('co.offline.title')}<p class="co-no">${t('co.active', { no: esc(S.active) })}</p>
+        <a class="save-selection" href="${wa(t('co.wa.active', { no: S.active }))}" target="_blank" rel="noopener">${t('co.active.btn')}${icon('up', 20, true)}</a>`;
+    }
     if (S.offline) {
       return `${header('co.offline.title')}<p class="co-no">${t('co.offline')}</p>
         <a class="save-selection" href="${wa(orderText())}" target="_blank" rel="noopener">${t('co.offline.btn')}${icon('up', 20, true)}</a>`;
@@ -161,11 +165,11 @@
     const r = S.res;
     const head = `${header('co.done')}<p class="co-no">${t('co.orderno')}: <b>${esc(r.order_no)}</b></p>
       <p class="co-hint co-pickup-done"><b>${t('pk.' + S.f.pickup)}.</b> ${t('pk.' + S.f.pickup + '.after')}</p>`;
-    if (!S.group) {
-      const ref = `Sway ${r.order_no}`;
-      return `${head}<p class="co-label">${t('co.pay.title')}</p>${payCard(r.amount, ref)}
-        <a class="save-selection" data-paid="${esc(r.shares[0].token)}" href="${wa(t('co.wa.paid', { amount: r.amount, ref }))}" target="_blank" rel="noopener">${t('co.pay.paid')}${icon('up', 20, true)}</a>`;
-    }
+    // the order opens only when the customer sends it from their own WhatsApp; the bot then sends the Bit details
+    const confirm = `<p class="co-label">${t('co.confirm.title')}</p><p class="co-hint">${t('co.confirm.body')}</p>
+      <a class="save-selection" href="${wa(t('co.wa.confirm', { no: r.order_no }))}" target="_blank" rel="noopener">${t('co.confirm.btn')}${icon('up', 20, true)}</a>
+      <p class="co-hint">${t('co.confirm.after')}</p>`;
+    if (!S.group) return head + confirm;
     const base = siteBase();
     const rows = r.shares.map(s => {
       const link = `${base}pay.html?s=${s.token}${I18N.lang === 'en' ? '&lang=en' : ''}`;
@@ -175,7 +179,7 @@
         : `<a class="btn btn--line" href="${wa(t('co.group.msg', { amount: s.amount, link }), '')}" target="_blank" rel="noopener">${t('co.group.send')}</a>${copyBtn(link)}`;
       return `<li><span><b>${who}</b><small>${money(s.amount)} · Sway ${esc(r.order_no)}-${s.n}</small></span><span class="co-actions">${act}</span></li>`;
     }).join('');
-    return `${head}
+    return `${head}${confirm}
       <p class="co-label">${t('co.group.title')}</p><ul class="shares">${rows}</ul>
       <a class="save-selection" href="${base}order.html?o=${r.order_token}${I18N.lang === 'en' ? '&lang=en' : ''}">${t('co.group.track')}${icon('up', 20, true)}</a>`;
   }
@@ -231,10 +235,12 @@
         p_people: S.group ? S.people : null, p_lang: I18N.lang, p_email: S.f.email || null,
         p_is_gift: S.gift, p_gift_note: S.gift ? (S.f.gnote || null) : null
       });
-      S.offline = false;
+      S.offline = false; S.active = null;
       document.dispatchEvent(new CustomEvent('sway:order', { detail: { value: S.res.amount, qty: qty() } }));
     } catch (e) {
-      S.offline = true;
+      const act = String(e && e.message).match(/active_order:(\d+)/);   // one active order per phone
+      S.active = act ? act[1] : null;
+      S.offline = !act;
     }
     S.busy = false; S.step = 3; render();
   }
@@ -282,7 +288,7 @@
 
   window.Order = {
     open({ colour = 'blue', group = false } = {}) {
-      if (S.step === 3) Object.assign(S, { step: 1, res: null, offline: false });
+      if (S.step === 3) Object.assign(S, { step: 1, res: null, offline: false, active: null });
       if (!S.res && S.step === 1 && qty() <= 1) { S.blue = colour === 'blue' ? 1 : 0; S.brown = colour === 'brown' ? 1 : 0; S.view = null; }
       S.group = group || S.group;
       render();

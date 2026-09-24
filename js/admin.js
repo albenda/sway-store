@@ -12,7 +12,7 @@ const wa = (phone, text) => `https://wa.me/${intl(phone)}?text=${encodeURICompon
 const base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
 const COLOUR = { blue: 'כחול ים', brown: 'חום חול', mixed: 'כחול וחום' };
 const items = o => [o.qty_blue ? `${o.qty_blue} × כחול ים` : '', o.qty_brown ? `${o.qty_brown} × חום חול` : ''].filter(Boolean).join(' + ') || `${o.qty} × ${COLOUR[o.colour]}`;
-const STATUS = { new: 'חדשה', paid: 'שולמה', ready: 'מוכן לאיסוף', collected: 'נאסף', shipped: 'נשלחה', cancelled: 'בוטלה' };
+const STATUS = { pending: 'לא אושרה בוואטסאפ', new: 'חדשה', paid: 'שולמה', ready: 'מוכן לאיסוף', collected: 'נאסף', shipped: 'נשלחה', cancelled: 'בוטלה' };
 const PICKUP = { ashdod: 'אשדוד, המתכת 21', nesziona: 'נס ציונה' };
 const SHARE = { waiting: 'ממתין', reported: 'דיווח ששילם', confirmed: 'אושר' };
 let view = 'orders', filter = 'open', orders = [], reviews = [];
