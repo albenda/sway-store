@@ -556,3 +556,10 @@ html[lang=he] [lang=en],html[lang=en] [lang=he]{display:none}
 .pend-bar button{margin-inline-start:auto;border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:inherit}
 
 .band--ivory :focus-visible,.purchase-dialog :focus-visible,body.page :focus-visible,.sukkot :focus-visible{outline-color:var(--sway-ink)!important}
+
+/* sold-out colour + notify me (order dialog) */
+.co-row.is-out .colour-choice{opacity:.55;cursor:default}
+.co-out{font:700 12px var(--sway-sans);letter-spacing:.04em;color:var(--sway-muted);border:1px solid var(--sway-rule);border-radius:99px;padding:4px 10px}
+.co-notify{margin:4px 0 12px;padding:12px 14px;border-radius:12px;background:rgba(237,138,119,.1)}
+.co-notify p{margin:0 0 8px;font-size:13px;line-height:1.5}
+.co-notify .co-coupon__row input{text-transform:none;letter-spacing:0}

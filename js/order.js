@@ -63,6 +63,7 @@
   async function applyCoupon(code) {
     S.coupon = code; S.couponInfo = null;
     if (norm(code)) S.couponInfo = await api('coupon_check', { p_code: norm(code) }).catch(() => null);
+    if (norm(code)) window.SwayTrack?.push('coupon', `${norm(code)} ${S.couponInfo ? '✓' : '✗'}`);
     render();
   }
   function couponRow() {
@@ -102,7 +103,23 @@
       </div>`;
   }
 
+  // a colour switched to "sold out" on the admin page: no ordering it, leave a phone to hear when it is back
+  const out = c => !!(C.soldout && C.soldout[c]);
+  function fixSoldout() {
+    for (const c of ['blue', 'brown']) if (out(c) && S[c]) { const o = c === 'blue' ? 'brown' : 'blue'; if (!out(o)) S[o] += S[c]; S[c] = 0; }
+    if (!qty() && !out('blue')) S.blue = 1;
+    if (!qty() && !out('brown')) S.brown = 1;
+    if (out(S.view)) S.view = null;
+  }
+  function notifyBox(c) {
+    const done = S.notified && S.notified[c];
+    return `<div class="co-notify"><p><b>${t('co.soldout.title', { c: t('col.' + c) })}</b> ${done ? t('co.notify.ok') : t('co.notify.body')}</p>
+      ${done ? '' : `<span class="co-coupon__row"><input type="tel" inputmode="tel" dir="ltr" autocomplete="tel" maxlength="16" placeholder="05X-XXXXXXX" aria-label="${t('co.phone')}" data-notify-phone="${c}">
+      <button type="button" data-notify="${c}">${t('co.notify.btn')}</button></span><p class="co-err" data-notify-err="${c}"></p>`}</div>`;
+  }
+
   function step1() {
+    fixSoldout();
     const pr = price();
     const sp = split(pr.sub - pr.discount, S.people);
     const tooSmall = S.group && sp.each < C.minShare;
@@ -110,8 +127,10 @@
         <button type="button" ${attr}="-1" aria-label="${t('co.dec')} ${lab}" ${canDec ? '' : 'disabled'}>${icon('minus', 15)}</button>
         <output aria-live="polite">${val}</output>
         <button type="button" ${attr}="1" aria-label="${t('co.inc')} ${lab}" ${canInc ? '' : 'disabled'}>${icon('plus', 15)}</button></div>`;
-    const rows = ['blue', 'brown'].map(c => `<div class="co-row"><button type="button" class="colour-choice${S[c] ? ' selected' : ''}" data-pick="${c}" aria-pressed="${view() === c}"><span class="fabric-chip fabric-${c}" aria-hidden="true">${icon('check')}</span>${t('col.' + c)}</button>
+    const rows = ['blue', 'brown'].map(c => out(c) ? `<div class="co-row is-out"><span class="colour-choice"><span class="fabric-chip fabric-${c}" aria-hidden="true"></span>${t('col.' + c)}</span><span class="co-out">${t('co.soldout')}</span></div>${notifyBox(c)}`
+      : `<div class="co-row"><button type="button" class="colour-choice${S[c] ? ' selected' : ''}" data-pick="${c}" aria-pressed="${view() === c}"><span class="fabric-chip fabric-${c}" aria-hidden="true">${icon('check')}</span>${t('col.' + c)}</button>
         ${stepper(`data-cq-${c}`, S[c], t('col.' + c), S[c] > 0 && qty() > 1, qty() < C.maxQty)}</div>`).join('');
+    const none = out('blue') && out('brown');
     const one = qty() === 1, two = qty() === 2;
     const deal = qty() <= 2 ? `<div class="co-deal" role="group" aria-label="${t('co.deal')}">
         <button type="button" class="co-deal__opt${one ? ' is-on' : ''}" data-qset="1" aria-pressed="${one}"><b>${t('co.one')}</b><span>${money(C.price)}</span></button>
@@ -129,7 +148,8 @@
         ${tooSmall ? `<p class="co-err">${t('co.err.share')}</p>` : ''}` : ''}
       ${couponRow()}
       ${summary(pr)}
-      <button class="save-selection" type="button" data-next ${tooSmall ? 'disabled' : ''}>${t('co.next')}${icon('next', 20, true)}</button>
+      ${S.soldoutErr ? `<p class="co-err">${t('co.err.soldout')}</p>` : ''}
+      <button class="save-selection" type="button" data-next ${tooSmall || none ? 'disabled' : ''}>${t('co.next')}${icon('next', 20, true)}</button>
       <p class="purchase-disclaimer">${t('co.disclaimer')}</p>`;
   }
 
@@ -157,7 +177,7 @@
     return `${header()}
       <form data-form novalidate>
         ${field('name', 'co.name', 'text', 'autocomplete="name" required minlength="2" maxlength="80"')}
-        ${field('phone', 'co.phone', 'tel', 'autocomplete="tel" inputmode="tel" dir="ltr" required')}
+        ${field('phone', 'co.phone', 'tel', 'autocomplete="tel" inputmode="tel" dir="ltr" required', t('co.phone.hint'))}
         ${field('email', 'co.email', 'email', 'autocomplete="email" inputmode="email" dir="ltr"')}
         <div class="co-row" style="margin-bottom:10px"><label for="co-gift">${t('co.gift')}<span class="co-hint" style="display:block">${t('co.gift.desc')}</span></label>
           <input class="co-toggle" id="co-gift" type="checkbox" ${S.gift ? 'checked' : ''}></div>
@@ -254,6 +274,22 @@
     return !first;
   }
 
+  // name + valid phone typed in: kept as a draft (the phone field says so), so one WhatsApp reminder can bring
+  // the visitor back to this exact checkout if they leave (whatsapp-bot sweep; the link is ?d=<token>)
+  let draftTimer = 0;
+  function saveDraft() {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => {
+      const f = S.f, tel = (f.phone || '').replace(/\D/g, '').replace(/^(00)?972/, '0');
+      if (S.res || (f.name || '').trim().length < 2 || !/^05\d{8}$/.test(tel)) return;
+      S.draft = S.draft || Array.from(crypto.getRandomValues(new Uint8Array(20)), b => (b % 36).toString(36)).join('');
+      let sid = null; try { sid = sessionStorage.getItem('sway-sid'); } catch {}
+      api('save_draft', { p_token: S.draft, p_sid: sid, p_name: f.name.trim(), p_phone: tel, p_blue: S.blue, p_brown: S.brown,
+        p_people: S.group ? S.people : 1, p_pickup: f.pickup || null, p_coupon: S.couponInfo ? S.couponInfo.code : null, p_lang: I18N.lang })
+        .then(() => window.SwayTrack?.push('draft', null, true)).catch(() => {});
+    }, 1200);
+  }
+
   async function submit(form) {
     if (S.busy || !validate(form)) return;
     S.busy = true; render();
@@ -267,8 +303,13 @@
       });
       S.offline = false; S.active = null;
       try { localStorage.setItem('sway-pending', JSON.stringify({ no: S.res.order_no, token: S.res.order_token, at: Date.now() })); } catch {}
-      document.dispatchEvent(new CustomEvent('sway:order', { detail: { value: S.res.amount, qty: qty() } }));
+      document.dispatchEvent(new CustomEvent('sway:order', { detail: { value: S.res.amount, qty: qty(), no: S.res.order_no } }));
     } catch (e) {
+      if (/soldout/.test(String(e && e.message))) {   // the colour sold out while this page was open
+        await fetch(`${C.supabaseUrl}/rest/v1/rpc/shop_settings`, { method: 'POST', headers: { apikey: C.supabaseKey, 'Content-Type': 'application/json' }, body: '{}' })
+          .then(r => r.json()).then(v => I18N.shop(v)).catch(() => {});
+        Object.assign(S, { busy: false, step: 1, soldoutErr: true }); return render();
+      }
       const act = String(e && e.message).match(/active_order:(\d+)/);   // one active order per phone
       S.active = act ? act[1] : null;
       S.offline = !act;
@@ -316,15 +357,27 @@
     if (el.closest('[data-next]')) { S.step = 2; render(); document.dispatchEvent(new Event('sway:details')); return dlg.querySelector('input')?.focus(); }
     if (el.closest('[data-coupon-apply]')) return applyCoupon(dlg.querySelector('#co-coupon').value).then(() => dlg.querySelector('#co-coupon')?.focus());
     if (el.closest('a[href*="wa.me"]') && S.res && S.step === 3) document.dispatchEvent(new CustomEvent('sway:confirm', { detail: { value: S.res.amount } }));
-    if (el.closest('[data-new-order]')) { Object.assign(S, { step: 1, res: null, offline: false, active: null }); return render(); }
+    if (el.closest('[data-new-order]')) { Object.assign(S, { step: 1, res: null, offline: false, active: null, draft: null }); return render(); }
     if (el.closest('[data-back]')) { S.f = readForm(dlg.querySelector('form')); S.step = 1; return render(); }
     const paid = el.closest('[data-paid]'); if (paid) api('report_share_paid', { p_token: paid.dataset.paid }).catch(() => {});
+    const nb = el.closest('[data-notify]');
+    if (nb) {
+      const c = nb.dataset.notify, tel = (dlg.querySelector(`[data-notify-phone="${c}"]`).value || '').replace(/\D/g, '').replace(/^(00)?972/, '0');
+      if (!/^05\d{8}$/.test(tel)) { dlg.querySelector(`[data-notify-err="${c}"]`).textContent = t('co.err.phone'); return; }
+      nb.disabled = true;
+      api('notify_me', { p_colour: c, p_phone: tel, p_lang: I18N.lang })
+        .then(() => { S.notified = { ...S.notified, [c]: true }; window.SwayTrack?.push('notify', c); render(); })
+        .catch(() => { nb.disabled = false; dlg.querySelector(`[data-notify-err="${c}"]`).textContent = t('co.offline'); });
+    }
   });
   dlg.addEventListener('change', e => {
     if (e.target.id === 'co-group') { S.group = e.target.checked; render(); dlg.querySelector('#co-group').focus(); }
     if (e.target.id === 'co-gift') { S.f = readForm(dlg.querySelector('form')); S.gift = e.target.checked; render(); dlg.querySelector('#co-gift').focus(); }
   });
-  dlg.addEventListener('input', e => { if (e.target.name === 'pickup') S.f.pickup = e.target.value; });
+  dlg.addEventListener('input', e => {
+    if (e.target.name === 'pickup') S.f.pickup = e.target.value;
+    if (['name', 'phone', 'pickup'].includes(e.target.name)) { S.f = { ...S.f, ...readForm(e.target.form) }; saveDraft(); }
+  });
   dlg.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'co-coupon') { e.preventDefault(); applyCoupon(e.target.value).then(() => dlg.querySelector('#co-coupon')?.focus()); } });
   dlg.addEventListener('submit', e => { e.preventDefault(); submit(e.target); });
   document.addEventListener('langchange', () => { if (dlg.open) render(); });
@@ -332,12 +385,23 @@
 
   const urlCoupon = new URLSearchParams(location.search).get('coupon');
   if (urlCoupon) S.coupon = urlCoupon;
+  // the reminder link: reopen the checkout where the visitor left it
+  const urlDraft = new URLSearchParams(location.search).get('d');
+  if (urlDraft && /^[A-Za-z0-9]{16,40}$/.test(urlDraft)) api('get_draft', { p_token: urlDraft }).then(d => {
+    if (!d) return;
+    Object.assign(S, { draft: urlDraft, blue: d.blue, brown: d.brown, group: d.people > 1, people: Math.max(d.people, 2), coupon: d.coupon || S.coupon,
+      f: { ...S.f, name: d.name || '', phone: d.phone, pickup: d.pickup || S.f.pickup } });
+    if (!qty()) S.blue = 1;
+    window.Order.open({ colour: S.brown > S.blue ? 'brown' : 'blue' });
+    S.step = 2; render();
+    window.SwayTrack?.push('resume', null, true);
+  }).catch(() => {});
   window.Order = {
     open({ colour = 'blue', group = false, coupon } = {}) {
       if (coupon || (S.coupon && !S.couponInfo)) applyCoupon(coupon || S.coupon);
       // a created order stays on its confirm step until the customer starts a new one (the link must not get lost)
       if (S.step === 3 && !S.res) Object.assign(S, { step: 1, res: null, offline: false, active: null });
-      if (!S.res && S.step === 1 && qty() <= 1) { S.blue = colour === 'blue' ? 1 : 0; S.brown = colour === 'brown' ? 1 : 0; S.view = null; }
+      if (!S.res && S.step === 1 && qty() <= 1 && !S.draft) { S.blue = colour === 'blue' ? 1 : 0; S.brown = colour === 'brown' ? 1 : 0; S.view = null; }
       S.group = group || S.group;
       render();
       dlg.showModal();

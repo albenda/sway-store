@@ -44,7 +44,7 @@ const ST = { pending: 'לא אישר בוואטסאפ', new: 'ממתין לתש�
 const PICK = { ashdod: 'אשדוד', nesziona: 'נס ציונה', courier: 'שליח (ברקוד)' };
 const METHOD = { paybox: 'PayBox', bit: 'ביט', transfer: 'העברה', cash: 'מזומן', other: 'אחר' };
 const COLOUR = { blue: 'כחול ים', brown: 'חום חול' };
-const VIEWS = { today: ['היום', 'today'], orders: ['הזמנות', 'orders'], money: ['כסף', 'money'], partners: ['ספקים', 'truck'], marketing: ['שיווק', 'tag'], stock: ['מלאי', 'stock'], people: ['לקוחות', 'people'] };
+const VIEWS = { today: ['היום', 'today'], orders: ['הזמנות', 'orders'], money: ['כסף', 'money'], partners: ['ספקים', 'truck'], marketing: ['שיווק', 'tag'], site: ['אתר', 'chart'], stock: ['מלאי', 'stock'], people: ['לקוחות', 'people'] };
 const PHONE_TABS = ['today', 'orders', 'money', 'partners'];
 
 const blue = o => o.qty_blue || (o.colour === 'blue' ? o.qty : 0);
@@ -68,7 +68,8 @@ const T = {
   ready: o => o.pickup === 'nesziona'
     ? `היי ${first(o.name)}, הערסל מחכה לך בנס ציונה. מתי נוח לך לאסוף?`
     : `היי ${first(o.name)}, הערסל מוכן לאיסוף באשדוד, רחוב המתכת 21 (א׳-ה׳, 08:30-14:30). מתי נוח לך להגיע?`,
-  review: o => `היי ${first(o.name)}, מקווים שאתם נהנים מהערסל. נשמח לביקורת קצרה, עם תמונה אם בא לכם: ${base}review.html?o=${o.token}`
+  review: o => `היי ${first(o.name)}, מקווים שאתם נהנים מהערסל. נשמח לביקורת קצרה, עם תמונה אם בא לכם: ${base}review.html?o=${o.token}`,
+  draft: d => `היי ${first(d.name)}, ראיתי שהתחלת להזמין ערסל Sway ולא סיימת. אפשר להמשיך בדיוק מאיפה שעצרת: ${base}?d=${d.token}\nיש שאלה? אני כאן.`
 };
 // "I saw the money" buttons: one per app, so the receipt shows the right payment method
 const payBtns = (o, size, short) => ['paybox', 'bit'].map(m =>
@@ -76,13 +77,13 @@ const payBtns = (o, size, short) => ['paybox', 'bit'].map(m =>
 const receipt = (o, s) => `קבלה\nלקוח: ${o.name}\nטלפון: ${o.phone}${o.email ? `\nדוא״ל: ${o.email}` : ''}\nפריט: ערסל Sway, ${items(o)}\nסכום: ${s.amount} ₪\nאמצעי תשלום: ${METHOD[s.method] || 'לא צוין'}\nתאריך: ${new Date(s.confirmed_at || Date.now()).toLocaleDateString('he-IL')}\nאסמכתא: ${ref(o, s)}`;
 
 // ---------- state + data ----------
-const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, walog: [], recurring: [], purchases: [], sent: new Set(), bc: { who: 'buyers', text: '' }, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
+const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, walog: [], recurring: [], purchases: [], sent: new Set(), bc: { who: 'buyers', text: '' }, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', speriod: '7', stats: {}, drafts: [], waitlist: [], links: [], more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
 const must = r => { if (r.error) throw r.error; return r; };
 
 let seq = 0, snap = '';
 async function load() {
   const my = ++seq;
-  const [o, r, i, l, cp, ex, ev, st, cn, rs, rp, re, pu, wl] = await Promise.all([
+  const [o, r, i, l, cp, ex, ev, st, cn, rs, rp, re, pu, wl, dr, wt, lk] = await Promise.all([
     sb.from('orders_v2').select('*, order_shares(*)').order('created_at', { ascending: false }).limit(1000),
     sb.from('reviews').select('*, orders_v2(order_no)').order('created_at', { ascending: false }).limit(200),
     sb.from('inventory').select('*').order('colour'),
@@ -96,11 +97,15 @@ async function load() {
     sb.from('reseller_payments').select('*').order('day', { ascending: false }),
     sb.from('recurring_expenses').select('*').order('created_at'),
     sb.from('purchases').select('*').order('ordered_on', { ascending: false }),
-    sb.from('wa_log').select('*').order('at', { ascending: false }).limit(400)
+    sb.from('wa_log').select('*').order('at', { ascending: false }).limit(400),
+    // round 4 (sway_v11_insights.sql): checkout drafts, "notify me when it is back", tracked links
+    sb.from('checkout_drafts').select('*').gt('created_at', new Date(Date.now() - 30 * 864e5).toISOString()).order('updated_at', { ascending: false }).limit(300),
+    sb.from('restock_waitlist').select('*').is('notified_at', null),
+    sb.from('track_links').select('*').order('created_at', { ascending: false })
   ]);
   must(o);
   if (my !== seq) return null;                  // a newer load already landed
-  const next = JSON.stringify([o.data, r.data, i.data, l.data, cp.data, ex.data, ev.data, st.data, cn.data, rs.data, rp.data, re.data, pu.data, wl.data]);
+  const next = JSON.stringify([o.data, r.data, i.data, l.data, cp.data, ex.data, ev.data, st.data, cn.data, rs.data, rp.data, re.data, pu.data, wl.data, dr.data, wt.data, lk.data]);
   if (next === snap) return null;               // nothing changed: no re-render, no lost taps
   snap = next;
   const before = S.orders;
@@ -113,6 +118,7 @@ async function load() {
   if (/^\d+$/.test(S.settings.pair_discount || '')) C.pairDiscount = +S.settings.pair_discount;
   S.notes = Object.fromEntries((cn.data || []).map(x => [x.phone, x]));
   S.resellers = rs.data || []; S.rpay = rp.data || []; S.recurring = re.data || []; S.purchases = pu.data || []; S.walog = wl.data || [];
+  S.drafts = dr.data || []; S.waitlist = wt.data || []; S.links = lk.data || [];
   S.errs = [['ביקורות', r], ['הוצאות', ex], ['היסטוריה', ev], ['לקוחות', cn], ['ספקים', rs], ['תשלומי ספקים', rp]].filter(([, x]) => x.error).map(([n]) => n);
   return before;
 }
@@ -655,7 +661,21 @@ function viewMarketing() {
   if (!S.coupons) return top('שיווק') + `<div class="panel empty"><b>הכלים האלה עוד לא מחוברים</b>צריך להריץ פעם אחת את עדכון המסד (sway_v6_admin2.sql).</div>`;
   const ab = abandoned(), lost = unpaidLost();
   let body;
-  if (S.mkt === 'coupons') {
+  if (S.mkt === 'links') {
+    const st = stats('30'), src = new Map((st?.d?.sources || []).map(x => [x.src, x]));
+    body = `<form class="panel box cform" data-link-new><h3>קישור חדש עם מעקב</h3>
+        <label class="field"><span>למה הקישור</span><input name="label" required maxlength="80" placeholder="סטורי סוכות"></label>
+        <label class="field"><span>שם באנגלית (בקישור)</span><input name="slug" required maxlength="30" dir="ltr" pattern="[a-z0-9-]{2,30}" placeholder="story-sukkot"></label>
+        <label class="field"><span>קופון (לא חובה)</span><select name="coupon"><option value="">בלי</option>${S.coupons.filter(c => c.active).map(c => `<option>${esc(c.code)}</option>`).join('')}</select></label>
+        <button class="btn btn--main">יצירת קישור</button></form>
+      <div class="panel sec" style="overflow-x:auto"><table class="tbl"><thead><tr><th>קישור</th><th class="r">ביקורים</th><th class="r">פתחו הזמנה</th><th class="r">שלחו</th><th class="r">שילמו</th><th></th></tr></thead><tbody>
+      ${S.links.map(l => { const x = src.get(l.slug) || { n: 0, co: 0, ord: 0, nos: [] };
+        return `<tr><td><b>${esc(l.label)}</b><br><small dir="ltr">?src=${esc(l.slug)}${l.coupon ? '&coupon=' + esc(l.coupon) : ''}</small></td>
+          <td class="r num">${x.n}</td><td class="r num">${x.co}</td><td class="r num">${x.ord}</td><td class="r num">${paidNos(x.nos).length}</td>
+          <td class="acts"><button class="btn btn--line btn--sm" data-lcopy="${esc(l.slug)}">העתקה</button>${x.n ? '' : `<button class="btn btn--ghost btn--sm" data-ldel="${esc(l.slug)}">מחיקה</button>`}</td></tr>`; }).join('')
+        || '<tr><td colspan="6" class="empty">עוד אין קישורים. קישור לכל סטורי, פוסט או קבוצה, ורואים מה באמת מביא קונים.</td></tr>'}</tbody></table></div>
+      <p class="hint">המספרים של 30 הימים האחרונים. גם בלי קישור מיוחד, אינסטגרם, פייסבוק וגוגל מזוהים לבד במסך ״אתר״.</p>`;
+  } else if (S.mkt === 'coupons') {
     body = `<form class="panel box cform" data-coupon-new><h3>קופון חדש</h3>
         <label class="field"><span>קוד</span><input name="code" required maxlength="20" autocapitalize="characters" spellcheck="false" dir="ltr" placeholder="SUMMER10"></label>
         <label class="field"><span>סוג</span><select name="kind"><option value="pct">אחוז הנחה</option><option value="amount">שקלים הנחה</option></select></label>
@@ -679,14 +699,97 @@ function viewMarketing() {
       <span>${sw(o)}${items(o)} · <span class="num">${ils(o.amount)}</span></span><span>${ago(o.created_at)}</span>
       <span class="cust__do"><a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, kind === 'ab' ? T.recover(o) : T.unpaid(o))}">${ic('wa', 'ic--sm')}הודעה</a>
         <button class="btn btn--line btn--sm" data-revive="${o.id}">להחזיר</button><button class="btn btn--ghost btn--sm" data-open="${o.order_no}">פרטים</button></span></div>`;
-    body = `<section class="sec"><h2>התחילו הזמנה ולא אישרו <span class="count">${ab.length}</span></h2>
+    const dr = draftsOpen();
+    const dstate = d => d.resumed_at ? '<span class="pill pill--ok">חזר דרך התזכורת</span>' : d.reminded_at ? `<span class="pill">קיבל תזכורת ${ago(d.reminded_at)}</span>` : '<span class="pill pill--new">תזכורת תישלח לבד</span>';
+    body = `<section class="sec"><h2>השאירו טלפון ולא שלחו הזמנה <span class="count">${dr.length}</span></h2>
+        <div class="panel">${dr.map(d => `<div class="cust"><span><b>${esc(d.name || 'בלי שם')}</b><small class="num">${esc(d.phone)}</small></span>
+          <span>${draftItems(d) || '—'}${d.coupon ? ` · <span dir="ltr">${esc(d.coupon)}</span>` : ''}<br>${dstate(d)}</span><span>${ago(d.updated_at)}</span>
+          <span class="cust__do"><a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(d.phone, T.draft(d))}">${ic('wa', 'ic--sm')}הודעה</a></span></div>`).join('')
+          || '<p class="empty">אין כרגע. מי שמקליד שם וטלפון בהזמנה ויוצא מהאתר יופיע כאן, ויקבל תזכורת אחת בוואטסאפ אחרי שעה (ביום בלבד).</p>'}</div></section>
+      <section class="sec"><h2>התחילו הזמנה ולא אישרו <span class="count">${ab.length}</span></h2>
         <div class="panel">${ab.map(o => rowR(o, 'ab')).join('') || '<p class="empty">אין כרגע. מי שממלא הזמנה באתר ולא מאשר בוואטסאפ יופיע כאן.</p>'}</div></section>
       <section class="sec"><h2>אישרו ולא שילמו (בוטלו) <span class="count">${lost.length}</span></h2>
         <div class="panel">${lost.map(o => rowR(o, 'lost')).join('') || '<p class="empty">אין כרגע.</p>'}</div></section>
       <p class="hint">״להחזיר״ פותח את ההזמנה מחדש כממתינה לתשלום, כשהלקוח אומר שהוא עדיין רוצה.</p>`;
   }
   return top('שיווק', 'קופונים והזמנות שאפשר להציל') +
-    chips('mkt', [['coupons', 'קופונים', S.coupons.filter(c => c.active).length], ['recover', 'להציל הזמנות', ab.length + lost.length]], S.mkt) + `<div class="sec">${body}</div>`;
+    chips('mkt', [['coupons', 'קופונים', S.coupons.filter(c => c.active).length], ['recover', 'להציל הזמנות', ab.length + lost.length + draftsOpen().length], ['links', 'קישורים', S.links.length]], S.mkt) + `<div class="sec">${body}</div>`;
+}
+
+// ---------- round 4: the site itself (anonymous visit statistics + drafts + links, sway_v11_insights.sql) ----------
+// a draft = name + phone typed in the checkout, then left; it is done once that phone ordered after it
+const draftsOpen = () => S.drafts.filter(d => hours(d.created_at) < 24 * 14
+  && !S.orders.some(o => o.phone === d.phone && Date.parse(o.created_at) > Date.parse(d.created_at) - 36e5));
+const draftItems = d => [d.qty_blue && `${d.qty_blue} ${COLOUR.blue}`, d.qty_brown && `${d.qty_brown} ${COLOUR.brown}`].filter(Boolean).join(' + ');
+const SP = { today: 'היום', 7: '7 ימים', 30: '30 יום' };
+const SRCN = { direct: 'ישיר / לא ידוע', instagram: 'אינסטגרם', facebook: 'פייסבוק', google: 'גוגל', whatsapp: 'וואטסאפ', tiktok: 'טיקטוק', youtube: 'יוטיוב' };
+const srcName = x => S.links.find(l => l.slug === x)?.label || SRCN[x] || x;
+const paidNos = nos => { const set = new Set((nos || []).map(Number)); return S.orders.filter(o => set.has(o.order_no) && o.order_shares.some(x => x.status === 'confirmed')); };
+function statsFrom(p) {
+  if (p !== 'today') return Date.now() - +p * 864e5;
+  const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: TZ, hour12: false }).split(':').map(Number);   // since midnight in Israel
+  return Date.now() - (h * 60 + m) * 6e4;
+}
+async function loadStats(p) {
+  if (S.stLoading?.[p]) return;
+  S.stLoading = { ...S.stLoading, [p]: true };
+  const { data, error } = await sb.rpc('site_stats', { p_from: new Date(statsFrom(p)).toISOString() });
+  S.stLoading[p] = false;
+  S.stats[p] = { d: error ? null : data, err: error?.message, at: Date.now() };
+  render();
+}
+// cached a minute; the first look (or a stale one) fetches in the background and renders again
+const stats = p => { const x = S.stats[p]; if (!x || Date.now() - x.at > 60000) loadStats(p); return x; };
+const pct = (a, b) => (b ? Math.round(a / b * 100) : 0) + '%';
+const bars = (rows, total) => rows.map(([l, n, extra]) => `<div class="bar"><span>${l}</span><i><s style="width:${Math.round(n / (total || 1) * 100)}%"></s></i><b class="num">${n}${extra ? ` <small>${extra}</small>` : ''}</b></div>`).join('');
+
+function viewSite() {
+  const p = S.speriod, st = stats(p), d = st?.d;
+  const head = top('האתר', 'מי נכנס, מאיפה הגיע ומה עשה. אנונימי, בלי עוגיות') + chips('speriod', Object.entries(SP), p);
+  if (!st) return head + '<div class="panel empty">טוען…</div>';
+  if (!d) return head + `<div class="panel empty"><b>הנתונים עוד לא מחוברים</b>${esc(st.err || '')}</div>`;
+  const live = `<p class="hint"><span class="pill ${d.live ? 'pill--ok' : ''}">עכשיו באתר: <b class="num">${d.live}</b></span></p>`;
+  if (!d.sessions) return head + live + '<div class="panel empty"><b>עוד אין ביקורים בתקופה הזו</b>הנתונים נאספים מכל מי שנכנס לאתר, מהרגע שהמעקב עלה.</div>';
+  const f = d.funnel, paid = paidNos(d.orders), N = d.sessions;
+  const kpis = `<div class="kpis">
+    <div class="panel kpi kpi--main"><span>ביקורים</span><b class="num">${N}</b><small>${d.views} צפיות בדפים</small></div>
+    <div class="panel kpi"><span>פתחו הזמנה</span><b class="num">${f.checkout}</b><small>${pct(f.checkout, N)} מהביקורים</small></div>
+    <div class="panel kpi"><span>שלחו הזמנה</span><b class="num">${f.order}</b><small>${pct(f.order, N)} מהביקורים</small></div>
+    <div class="panel kpi"><span>שילמו</span><b class="num">${paid.length}</b><small>${ils(paid.reduce((a, o) => a + o.amount, 0))} · ${pct(paid.length, N)} המרה</small></div></div>`;
+  const steps = [['נכנסו לאתר', N], ['פתחו הזמנה', f.checkout], ['עברו לפרטים', f.details], ['השאירו טלפון', f.draft], ['שלחו הזמנה', f.order], ['אישרו בוואטסאפ', f.confirm], ['שילמו', paid.length]];
+  const funnel = `<section class="panel box"><h3>משפך</h3>${bars(steps.map(([l, n], i) => [l, n, i ? `(${pct(n, steps[i - 1][1])})` : '']), N)}
+    <p class="hint">האחוז בסוגריים: כמה עברו מהשלב הקודם. הנפילה הכי גדולה היא המקום לשפר.</p></section>`;
+  const hrs = Array.from({ length: 24 }, (_, h) => d.hours[h] || 0), hmx = Math.max(...hrs, 1);
+  const time = p === 'today' || d.days.length < 2
+    ? `<section class="panel box"><h3>לפי שעה</h3><div class="mbars hbars">${hrs.map((n, h) => `<div title="${h}:00 · ${n}"><i style="height:${Math.round(n / hmx * 100)}%"></i><span>${h % 3 ? '' : h}</span></div>`).join('')}</div></section>`
+    : `<section class="panel box"><h3>ביקורים ביום</h3><div class="mbars">${d.days.map(x => `<div><i style="height:${Math.round(x.n / Math.max(...d.days.map(y => y.n)) * 100)}%"></i><b class="num">${x.n}</b><span>${day(x.d + 'T12:00:00')}</span></div>`).join('')}</div></section>
+      <section class="panel box"><h3>באיזו שעה נכנסים</h3><div class="mbars hbars">${hrs.map((n, h) => `<div title="${h}:00 · ${n}"><i style="height:${Math.round(n / hmx * 100)}%"></i><span>${h % 3 ? '' : h}</span></div>`).join('')}</div></section>`;
+  const srcRows = d.sources.map(x => { const pd = paidNos(x.nos);
+    return `<tr><td>${esc(srcName(x.src))}</td><td class="r num">${x.n}</td><td class="r num">${x.co}</td><td class="r num">${x.ord}</td><td class="r num">${pd.length}</td><td class="r num">${pct(pd.length, x.n)}</td></tr>`; }).join('');
+  // colour: interest on the site vs what was actually ordered in the same period
+  const os = S.orders.filter(o => Date.parse(o.created_at) >= statsFrom(p) && confirmedEver(o) && !o.reseller_id);
+  const ob = os.reduce((a, o) => a + blue(o), 0), obr = os.reduce((a, o) => a + brown(o), 0);
+  const cb = d.colours.blue || 0, cbr = d.colours.brown || 0;
+  const split = (a, b) => `<div class="split"><i class="sw--blue" style="flex:${a || 0.001}"></i><i class="sw--brown" style="flex:${b || 0.001}"></i></div>
+    <div class="split__l"><span><i class="sw sw--blue"></i>${COLOUR.blue} <b class="num">${pct(a, a + b)}</b></span><span><i class="sw sw--brown"></i>${COLOUR.brown} <b class="num">${pct(b, a + b)}</b></span></div>`;
+  const colours = `<section class="panel box"><h3>כחול או חום?</h3>
+    <p class="hint">בחירות באתר (${cb + cbr} לחיצות)</p>${split(cb, cbr)}
+    <p class="hint" style="margin-top:14px">הוזמנו בפועל (${ob + obr} ערסלים)</p>${split(ob, obr)}</section>`;
+  const m = d.devices.m || 0, dk = d.devices.d || 0;
+  const tools = [['שאלו בוואטסאפ מהאתר', d.wa], ['פתחו את הערסל בחדר (AR)', d.ar], ['בדקו אם זה נכנס', d.fit], ['ביקשו ״תודיעו לי כשחוזר״', d.notify], ['חזרו מתזכורת להזמנה', d.resume]];
+  const scroll = d.scroll || {};
+  const side = `<section class="panel box"><h3>מאיפה גולשים</h3>${bars([['טלפון', m, pct(m, m + dk)], ['מחשב', dk, pct(dk, m + dk)]], m + dk)}
+      <h3 style="margin-top:16px">כמה עמוק גוללים</h3>${bars([['רבע דף', scroll[25] || 0], ['חצי דף', scroll[50] || 0], ['שלושה רבעים', scroll[75] || 0], ['עד הסוף', scroll[100] || 0]].map(([l, n]) => [l, n, pct(n, N)]), N)}</section>
+    <section class="panel box"><h3>מה עשו באתר</h3>${bars(tools.map(([l, n]) => [l, n, pct(n, N)]), N)}</section>`;
+  const list = (title, rows, empty) => `<section class="panel box"><h3>${title}</h3>${rows.length ? `<ol class="toplist">${rows.join('')}</ol>` : `<p class="hint">${empty}</p>`}</section>`;
+  const PG = { index: 'דף הבית', balcony: 'דף מרפסת', beach: 'דף חוף', gift: 'דף מתנה', about: 'אודות', care: 'טיפול בערסל', shipping: 'משלוחים ואיסוף', returns: 'החזרות', terms: 'תקנון', order: 'מעקב הזמנה', pay: 'תשלום חבר', review: 'ביקורת', accessibility: 'נגישות' };
+  return head + live + `<div class="sec">${kpis}</div><div class="sec cols2">${funnel}${colours}</div><div class="sec cols2">${time}</div>
+    <section class="sec"><h2>מאיפה הגיעו</h2><div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>מקור</th><th class="r">ביקורים</th><th class="r">פתחו הזמנה</th><th class="r">שלחו</th><th class="r">שילמו</th><th class="r">המרה</th></tr></thead><tbody>${srcRows}</tbody></table></div>
+      <p class="hint">רוצים לדעת מה הביא כל סטורי או פוסט? בשיווק > קישורים יוצרים קישור נפרד לכל אחד.</p></section>
+    <div class="sec cols2">${side}</div>
+    <div class="sec cols3">${list('הדפים הנצפים', d.pages.map(x => `<li><span>${esc(PG[x.p] || x.p)}</span><b class="num">${x.n}</b></li>`), 'אין עדיין.')}
+      ${list('שאלות שפתחו הכי הרבה', d.faq.map(x => `<li><span>${esc(x.q)}</span><b class="num">${x.n}</b></li>`), 'עוד אף אחד לא פתח שאלה.')}
+      ${list('קודי קופון שניסו', d.coupons.map(x => `<li><span dir="ltr">${esc(x.c)}</span><b class="num">${x.n}</b></li>`), 'עוד לא ניסו קודים.')}</div>`;
 }
 
 function viewStock() {
@@ -701,6 +804,9 @@ function viewStock() {
       <div class="sk__row"><span>שמורים להזמנות פתוחות</span><b class="num">${k.held}</b></div>
       ${incoming(k.colour) ? `<div class="sk__row"><span>בדרך מהמפעל</span><b class="num">${incoming(k.colour)}</b></div>` : ''}
       <div class="sk__row"><span>התראה מתחת ל־</span><b class="num">${k.low_at}</b></div>
+      <div class="sk__row"><span>באתר</span><b>${S.settings['soldout_' + k.colour] === '1' ? '<span class="pill pill--cancelled">מסומן: אזל</span>' : '<span class="pill pill--ok">למכירה</span>'}</b></div>
+      ${S.waitlist.some(w => w.colour === k.colour) ? `<div class="sk__row"><span>מחכים שיחזור</span><b class="num">${S.waitlist.filter(w => w.colour === k.colour).length}</b></div>` : ''}
+      <button class="btn btn--line btn--sm" data-soldout="${k.colour}">${S.settings['soldout_' + k.colour] === '1' ? 'חזר למלאי' : 'לסמן: אזל מהמלאי'}</button>
       <form class="adj" data-count="${k.colour}"><label class="sr" for="n-${k.colour}">כמה יש במחסן</label>
         <input id="n-${k.colour}" name="n" type="number" inputmode="numeric" min="0" max="9999" required placeholder="${k.on_hand}">
         <input class="input" name="reason" maxlength="200" placeholder="סיבה (ספירה, משלוח חדש...)" aria-label="סיבה">
@@ -965,7 +1071,7 @@ function render(force) {
   const scroll = $('.drawer__body')?.scrollTop;
   const focusId = a?.id, caret = a?.selectionStart;
   const key = S.palette ? 'pal' : o ? 'o' + o.order_no : S.rsl ? 'r' + S.rsl : S.cust ? 'c' + S.cust : S.acct ? 'acct' : '';
-  const n = { today: tasks().filter(k => k.hot >= 1).length, partners: S.resellers.filter(r => overdue(r).length).length, people: S.reviews.filter(r => r.status === 'pending').length, marketing: S.coupons ? abandoned().filter(x => hours(x.created_at) < 48).length : 0 };
+  const n = { today: tasks().filter(k => k.hot >= 1).length, partners: S.resellers.filter(r => overdue(r).length).length, people: S.reviews.filter(r => r.status === 'pending').length, marketing: S.coupons ? abandoned().filter(x => hours(x.created_at) < 48).length + draftsOpen().filter(d => hours(d.created_at) < 48).length : 0 };
   const link = ([k, [l, i]]) => `<a href="#${k}"${k === v ? ' aria-current="page"' : ''}>${ic(i)}<span>${l}</span>${n[k] ? `<span class="dot num">${n[k]}</span>` : ''}</a>`;
   const links = Object.entries(VIEWS).map(link).join('');
   const rest = Object.entries(VIEWS).filter(([k]) => !PHONE_TABS.includes(k));
@@ -977,7 +1083,7 @@ function render(force) {
       <button class="btn btn--line btn--sm kbtn" data-palette>${ic('search', 'ic--sm')}חיפוש מהיר <kbd>⌘K</kbd></button>
       <div class="rail__foot">${liveTag}<button class="linkish" data-acct>${esc(userOf(S.me))} · הגדרות</button></div></aside>
     <main class="main"><div class="mtop">${MARK}${liveTag}<button class="btn btn--ghost btn--icon" data-palette aria-label="חיפוש מהיר">${ic('search')}</button><button class="btn btn--ghost btn--icon" data-acct aria-label="החשבון שלי">${ic('user')}</button></div>
-      ${{ today: viewToday, orders: viewOrders, money: viewMoney, partners: viewPartners, marketing: viewMarketing, stock: viewStock, people: viewPeople }[v]()}</main>
+      ${{ today: viewToday, orders: viewOrders, money: viewMoney, partners: viewPartners, marketing: viewMarketing, site: viewSite, stock: viewStock, people: viewPeople }[v]()}</main>
     <nav class="tabbar" aria-label="ניווט ראשי">${tabs}</nav>
     ${S.more ? `<div class="scrim" data-mclose></div><div class="sheet" role="dialog" aria-label="עוד">${rest.map(link).join('')}<button type="button" data-acct>${ic('user')}<span>הגדרות וחשבון</span></button></div>` : ''}</div>
     ${S.palette ? paletteBox() : o ? orderDrawer(o) : S.rsl ? rslDrawer(S.rsl) : S.cust ? custDrawer(S.cust) : S.acct ? acctDrawer() : ''}`;
@@ -1134,6 +1240,18 @@ app.addEventListener('click', async e => {
   if (d.palette != null) { S.palette = true; S.palq = ''; return render(true); }
   if (d.pclose != null) { S.palette = false; return render(true); }
   if (d.mkt) { S.mkt = d.mkt; return render(true); }
+  if (d.speriod) { S.speriod = d.speriod; return render(true); }
+  if (d.lcopy) {
+    const l = S.links.find(x => x.slug === d.lcopy), url = `${base}?src=${l.slug}${l.coupon ? '&coupon=' + encodeURIComponent(l.coupon) : ''}`;
+    const ok = await (navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false);
+    return toast(ok ? 'הקישור הועתק' : url, null, !ok);
+  }
+  if (d.ldel) { if (!confirm('למחוק את הקישור? מי שכבר נכנס דרכו עדיין ייספר.')) return; return act(b, async () => must(await sb.from('track_links').delete().eq('slug', d.ldel)), 'הקישור נמחק'); }
+  if (d.soldout) {
+    const key = 'soldout_' + d.soldout, back = S.settings[key] === '1', wait = S.waitlist.filter(w => w.colour === d.soldout).length;
+    if (!confirm(back ? `לסמן ש${COLOUR[d.soldout]} חזר למלאי?${wait ? ` ${wait} שחיכו יקבלו הודעה בוואטסאפ.` : ''}` : `לסמן ש${COLOUR[d.soldout]} אזל? באתר אי אפשר יהיה להזמין אותו, ומי שרוצה ישאיר מספר.`)) return;
+    return act(b, async () => must(await sb.from('settings').upsert({ key, value: back ? '0' : '1' })), back ? 'חזר למלאי' : 'סומן כאזל באתר');
+  }
   if (d.clink) {
     const url = `${base}?coupon=${encodeURIComponent(d.clink)}`;
     const ok = await (navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false);
@@ -1296,6 +1414,12 @@ app.addEventListener('submit', async e => {
     if (!(+f.blue.value + +f.brown.value > 0)) return toast('כמה ערסלים הוזמנו?', null, true);
     return act(btn, async () => must(await sb.from('purchases').insert({ supplier: f.supplier.value.trim(), ordered_on: f.ordered.value, eta: f.eta.value || null, qty_blue: +f.blue.value || 0,
       qty_brown: +f.brown.value || 0, unit_cost: f.unit.value === '' ? null : +f.unit.value, extra_cost: +f.extra.value || 0, note: f.note.value.trim() || null })), 'הזמנת הרכש נשמרה');
+  }
+  if (d.linkNew != null) {
+    const slug = f.slug.value.trim().toLowerCase();
+    if (!/^[a-z0-9-]{2,30}$/.test(slug)) return toast('שם באנגלית: אותיות קטנות, ספרות ומקף', null, true);
+    if (S.links.some(l => l.slug === slug)) return toast('כבר יש קישור בשם הזה', null, true);
+    return act(btn, async () => must(await sb.from('track_links').insert({ slug, label: f.label.value.trim(), coupon: f.coupon.value || null })), 'הקישור נוצר. ״העתקה״ ומדביקים בסטורי');
   }
   if (d.couponNew != null) {
     const code = f.code.value.replace(/\s+/g, '').toUpperCase(), value = +f.value.value, kind = f.kind.value;

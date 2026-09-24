@@ -167,6 +167,13 @@ const DICT = {
     'co.notes': 'הערות (לא חובה)',
     'co.err.name': 'נא למלא שם מלא',
     'co.err.phone': 'מספר נייד ישראלי, 10 ספרות שמתחילות ב־05',
+    'co.phone.hint': 'אם תצאו לפני הסוף, נשלח תזכורת אחת בוואטסאפ עם קישור להמשך.',
+    'co.soldout': 'אזל',
+    'co.soldout.title': '{c} אזל כרגע.',
+    'co.notify.body': 'השאירו מספר ונכתוב לכם בוואטסאפ כשהוא חוזר.',
+    'co.notify.btn': 'תודיעו לי',
+    'co.notify.ok': 'רשמנו. תקבלו הודעה אחת בוואטסאפ כשהוא חוזר.',
+    'co.err.soldout': 'הצבע שבחרתם אזל הרגע. בחרו צבע אחר, או השאירו מספר ונודיע כשיחזור.',
 
     'co.email': 'דוא״ל, לשליחת הקבלה (לא חובה)',
     'co.err.email': 'כתובת הדוא״ל לא תקינה',
@@ -497,6 +504,13 @@ const DICT = {
     'co.notes': 'Notes (optional)',
     'co.err.name': 'Please enter your full name',
     'co.err.phone': 'An Israeli mobile number, 10 digits starting with 05',
+    'co.phone.hint': 'If you leave before the end, we send one WhatsApp reminder with a link to continue.',
+    'co.soldout': 'Sold out',
+    'co.soldout.title': '{c} is sold out right now.',
+    'co.notify.body': 'Leave your number and we will message you on WhatsApp when it is back.',
+    'co.notify.btn': 'Notify me',
+    'co.notify.ok': 'Done. You will get one WhatsApp message when it is back.',
+    'co.err.soldout': 'That colour just sold out. Pick the other one, or leave your number and we will tell you when it is back.',
 
     'co.email': 'Email, for your receipt (optional)',
     'co.err.email': 'That email address does not look right',
@@ -714,6 +728,7 @@ const I18N = {
     const map = new Map([['₪' + C.price, '₪' + price], ['₪' + C.anchor, '₪' + anchor], ['₪' + (2 * C.price - C.pairDiscount), '₪' + (2 * price - pair)],
       ['רחוב המתכת 21', v.ashdod_address], ['08:30-14:30', v.ashdod_hours], ['א׳-ה׳', v.ashdod_days], ['2-3', v.nesziona_days]].filter(([a, b]) => b && a !== b));
     Object.assign(C, { price, anchor, pairDiscount: pair, pickupOff: ['ashdod', 'nesziona'].filter(k => v[k + '_on'] === '0'),
+      soldout: { blue: v.soldout_blue === '1', brown: v.soldout_brown === '1' },
       groupDiscount: { perUnit: num('group_discount', C.groupDiscount.perUnit), minQty: num('group_min', C.groupDiscount.minQty) } });
     if (map.size) {
       const re = new RegExp([...map.keys()].map(k => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')).join('|'), 'g');

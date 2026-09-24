@@ -444,3 +444,23 @@ details[open].panel summary:before{content:"− "}
 .wamsg:first-of-type{border-top:0}
 .wamsg small{display:block;color:var(--muted);font-size:12.5px;white-space:pre-line}
 .wamsg small.err{color:var(--bad)}
+
+/* ---------- round 4: the site view ---------- */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+.cols2>.panel,.cols3>.panel{margin:0}
+.cols2 .bar,.cols3 .bar{grid-template-columns:minmax(110px,40%) 1fr auto}
+.bar b small{color:var(--faint);font-weight:600}
+.hbars{height:90px;gap:3px}
+.hbars>div{gap:2px}
+.hbars i{max-width:none;background:var(--coral,#ed8a77)}
+.hbars span{font-size:10.5px;color:var(--faint);min-height:12px}
+.split{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;margin-top:6px}
+.split i{display:block;min-width:2px}
+.split__l{display:flex;justify-content:space-between;font-size:13px;margin-top:6px}
+.toplist{list-style:none;margin:0;padding:0}
+.toplist li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--rule);font-size:14px}
+.toplist li:first-child{border-top:0}
+.toplist span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sk .btn{margin-top:10px}
+@media (max-width:900px){.cols2,.cols3{grid-template-columns:1fr}}
