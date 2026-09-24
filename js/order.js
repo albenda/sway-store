@@ -92,7 +92,7 @@
         <button type="button" ${attr}="-1" aria-label="${t('co.dec')} ${lab}" ${canDec ? '' : 'disabled'}>${icon('minus', 15)}</button>
         <output aria-live="polite">${val}</output>
         <button type="button" ${attr}="1" aria-label="${t('co.inc')} ${lab}" ${canInc ? '' : 'disabled'}>${icon('plus', 15)}</button></div>`;
-    const rows = ['blue', 'brown'].map(c => `<div class="co-row"><span class="colour-choice${S[c] ? ' selected' : ''}"><span class="fabric-chip fabric-${c}" aria-hidden="true">${icon('check')}</span>${t('col.' + c)}</span>
+    const rows = ['blue', 'brown'].map(c => `<div class="co-row"><button type="button" class="colour-choice${S[c] ? ' selected' : ''}" data-pick="${c}" aria-pressed="${view() === c}"><span class="fabric-chip fabric-${c}" aria-hidden="true">${icon('check')}</span>${t('col.' + c)}</button>
         ${stepper(`data-cq-${c}`, S[c], t('col.' + c), S[c] > 0 && qty() > 1, qty() < C.maxQty)}</div>`).join('');
     return `${header()}
       <p class="co-label">${t('co.pick')}</p>
@@ -180,9 +180,10 @@
       <a class="save-selection" href="${base}order.html?o=${r.order_token}${I18N.lang === 'en' ? '&lang=en' : ''}">${t('co.group.track')}${icon('up', 20, true)}</a>`;
   }
 
-  // photo follows the colour: the same patio shot, blue or brown
+  // photo follows the colour last picked (else the majority): a close-up of that fabric
+  function view() { return S.view || (S.brown > S.blue ? 'brown' : 'blue'); }
   function render() {
-    const photo = S.brown > S.blue ? 'assets/img/brown-garden-same.webp' : 'assets/img/blue-garden.webp';
+    const photo = `assets/img/${view()}-detail.webp`;
     dlg.innerHTML = `<div class="purchase-layout">
       <button type="button" class="dialog-close" data-x aria-label="${t('close')}">${icon('x', 24)}</button>
       <div class="purchase-photo"><img src="${photo}" alt="" width="900" height="900"></div>
@@ -247,8 +248,19 @@
       const c = cq.hasAttribute('data-cq-blue') ? 'blue' : 'brown';
       const d = +(cq.dataset.cqBlue || cq.dataset.cqBrown);
       if (S[c] + d >= 0 && qty() + d >= 1 && qty() + d <= C.maxQty) S[c] += d;
+      if (d > 0) S.view = c;
+      else if (!S[c]) S.view = null;
       render();
       return dlg.querySelector(`[data-cq-${c}="${d}"]:not(:disabled)`)?.focus();
+    }
+    // tapping a colour name: a single hammock switches colour; with several, it just shows that fabric
+    const pick = el.closest('[data-pick]');
+    if (pick) {
+      const c = pick.dataset.pick;
+      if (qty() === 1) { S.blue = c === 'blue' ? 1 : 0; S.brown = c === 'brown' ? 1 : 0; }
+      S.view = c;
+      render();
+      return dlg.querySelector(`[data-pick="${c}"]`)?.focus();
     }
     const pp = el.closest('[data-people]');
     if (pp) {
@@ -271,7 +283,7 @@
   window.Order = {
     open({ colour = 'blue', group = false } = {}) {
       if (S.step === 3) Object.assign(S, { step: 1, res: null, offline: false });
-      if (!S.res && S.step === 1 && qty() <= 1) { S.blue = colour === 'blue' ? 1 : 0; S.brown = colour === 'brown' ? 1 : 0; }
+      if (!S.res && S.step === 1 && qty() <= 1) { S.blue = colour === 'blue' ? 1 : 0; S.brown = colour === 'brown' ? 1 : 0; S.view = null; }
       S.group = group || S.group;
       render();
       dlg.showModal();

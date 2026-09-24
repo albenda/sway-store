@@ -266,7 +266,9 @@ body{background:var(--sway-blue);color:var(--sway-ivory);font-family:var(--sway-
 .co-steps li.is-on{color:var(--sway-ink);border-color:var(--sway-coral);font-weight:700}
 .co-label{font-size:12px;font-weight:600;margin:0 0 6px!important}
 .co-row{justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--sway-rule);font-size:14px;display:flex}
-.co-row .colour-choice{margin:0;cursor:default}
+.co-row .colour-choice{margin:0;cursor:pointer;background:0 0;border:0;padding:0;color:inherit;font:inherit;text-align:start}
+.co-row .colour-choice[aria-pressed=true]{font-weight:700}
+.co-row .colour-choice:focus-visible{outline:2px solid var(--sway-ink);outline-offset:4px}
 .quantity-control{align-items:center;gap:20px;display:flex}
 .quantity-control button{border:1px solid var(--sway-rule);width:30px;height:30px;color:var(--sway-ink);background:0 0;place-items:center;display:grid;padding:0}
 .quantity-control output{text-align:center;min-width:15px}
