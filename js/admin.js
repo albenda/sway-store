@@ -11,7 +11,8 @@ const remember = () => { try { return localStorage.getItem(REMEMBER) !== '0'; } 
 // "stay signed in" decides where the session lives: localStorage survives restarts, sessionStorage ends with the tab
 const where = () => (remember() ? localStorage : sessionStorage);
 const sb = createClient(C.supabaseUrl, C.supabaseKey, { auth: { storage: {
-  getItem: k => where().getItem(k), setItem: (k, v) => where().setItem(k, v),
+  getItem: k => sessionStorage.getItem(k) ?? localStorage.getItem(k),
+  setItem: (k, v) => { where().setItem(k, v); (where() === localStorage ? sessionStorage : localStorage).removeItem(k); },
   removeItem: k => { localStorage.removeItem(k); sessionStorage.removeItem(k); } } } });
 
 // ---------- helpers ----------
@@ -50,6 +51,9 @@ const sw = o => (blue(o) ? '<i class="sw sw--blue"></i>' : '') + (brown(o) ? '<i
 const shares = o => [...(o.order_shares || [])].sort((a, b) => a.n - b.n);
 const reported = o => o.status === 'new' && o.order_shares.some(s => s.status === 'reported');
 const due = o => o.order_shares.filter(s => s.status !== 'confirmed').reduce((a, s) => a + s.amount, 0);
+const told$ = o => o.order_shares.filter(s => s.status === 'reported').reduce((a, s) => a + s.amount, 0);   // reported, not confirmed
+const paid$ = o => o.order_shares.filter(s => s.status === 'confirmed').reduce((a, s) => a + s.amount, 0);
+const payLabel = o => o.people > 1 && reported(o) ? told$(o) : due(o);
 const live = o => ['new', 'paid', 'ready'].includes(o.status);
 const pill = o => reported(o) ? '<span class="pill pill--reported">דיווח ששילם</span>' : `<span class="pill pill--${o.status}">${ST[o.status]}</span>`;
 const ref = (o, s) => `Sway ${o.order_no}${o.people > 1 ? '-' + s.n : ''}`;
@@ -69,7 +73,9 @@ const receipt = (o, s) => `קבלה\nלקוח: ${o.name}\nטלפון: ${o.phone}
 const S = { orders: [], reviews: [], inv: null, log: [], me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', acct: false, live: false, flash: new Set() };
 const must = r => { if (r.error) throw r.error; return r; };
 
+let seq = 0, snap = '';
 async function load() {
+  const my = ++seq;
   const [o, r, i, l] = await Promise.all([
     sb.from('orders_v2').select('*, order_shares(*)').order('created_at', { ascending: false }).limit(1000),
     sb.from('reviews').select('*, orders_v2(order_no)').order('created_at', { ascending: false }).limit(200),
@@ -77,6 +83,10 @@ async function load() {
     sb.from('inventory_log').select('*').order('at', { ascending: false }).limit(30)
   ]);
   must(o);
+  if (my !== seq) return null;                  // a newer load already landed
+  const next = JSON.stringify([o.data, r.data, i.data, l.data]);
+  if (next === snap) return null;               // nothing changed: no re-render, no lost taps
+  snap = next;
   const before = S.orders;
   S.orders = o.data; S.reviews = r.data || []; S.inv = i.error ? null : i.data; S.log = l.data || [];
   return before;
@@ -95,7 +105,7 @@ function announce(before) {
   }
 }
 
-async function refresh(force) { announce(await load()); render(force); }
+async function refresh(force) { const before = await load(); if (!before && !force) return; if (before) announce(before); render(force); }
 
 let toastT;
 function toast(text, no, bad) {
@@ -112,9 +122,9 @@ function tasks() {
   const add = (hot, icon, o, title, sub, act) => out.push({ hot, icon, o, title, sub, act });
   const open = o => `<button class="btn btn--line btn--sm" data-open="${o.order_no}">פרטים</button>`;
   for (const o of S.orders) {
-    if (reported(o)) add(2, 'money', o, `לבדוק בביט ${ils(due(o))}`, `Sway ${o.order_no} · ${esc(o.name)} · דיווח ${ago(o.order_shares.find(s => s.status === 'reported').reported_at || o.created_at)}`,
+    if (reported(o)) add(2, 'money', o, `לבדוק בביט ${ils(payLabel(o))}`, `Sway ${o.order_no} · ${esc(o.name)} · דיווח ${ago(o.order_shares.find(s => s.status === 'reported').reported_at || o.created_at)}`,
       `<button class="btn btn--coral btn--sm" data-pay="${o.id}">${ic('check', 'ic--sm')}ראיתי בביט, שולם</button>${open(o)}`);
-    else if (o.status === 'new' && hours(o.created_at) >= 20) add(0, 'wa', o, 'עוד לא שילם', `Sway ${o.order_no} · ${esc(o.name)} · ${ago(o.created_at)}. מתבטל לבד אחרי 48 שע׳`,
+    else if (o.status === 'new' && hours(o.created_at) >= 24) add(0, 'wa', o, 'עוד לא שילם', `Sway ${o.order_no} · ${esc(o.name)} · ${ago(o.created_at)}${o.reminded_at ? ' · הבוט כבר שלח תזכורת' : ''}. מתבטל לבד אחרי 48 שע׳`,
       `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.remind(o))}">${ic('wa', 'ic--sm')}תזכורת</a>${open(o)}`);
     if (o.status === 'paid') add(1, 'orders', o, o.pickup === 'nesziona' ? 'להביא לנס ציונה' : 'להכין לאיסוף באשדוד',
       `Sway ${o.order_no} · ${esc(o.name)} · ${sw(o)}${items(o)}${o.pickup === 'nesziona' ? ' · לתאם עם אבא, 2-3 ימים' : ''}`,
@@ -151,7 +161,7 @@ function since(p) {
 }
 function payments(p) {
   const from = since(p), out = [];
-  for (const o of S.orders) if (o.status !== 'cancelled') for (const s of o.order_shares)
+  for (const o of S.orders) for (const s of o.order_shares)
     if (s.status === 'confirmed') { const t = Date.parse(s.confirmed_at || o.created_at); if (t >= from) out.push({ o, s, t }); }
   return out.sort((a, b) => b.t - a.t);
 }
@@ -275,7 +285,7 @@ function viewMoney() {
       <button class="btn btn--line btn--sm" data-csv style="margin-inline-start:auto">${ic('download', 'ic--sm')}ייצוא לאקסל</button></h2>
       <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>תאריך</th><th>הזמנה</th><th>לקוח</th><th>אמצעי</th><th class="r">סכום</th><th>קבלה</th></tr></thead>
       <tbody>${pays.map(x => `<tr><td class="num">${day(x.t)}</td><td><button data-open="${x.o.order_no}">${ref(x.o, x.s)}</button></td><td>${esc(x.o.name)}</td>
-        <td>${METHOD[x.s.method] || 'ביט'}</td><td class="r num">${ils(x.s.amount)}</td><td>${x.s.receipt_no ? `<span class="num">${esc(x.s.receipt_no)}</span>` : '<span class="pill pill--new">חסרה</span>'}</td></tr>`).join('')
+        <td>${METHOD[x.s.method] || 'ביט'}${x.o.status === 'cancelled' ? ' <span class="pill pill--cancelled">בוטל, להחזיר?</span>' : ''}</td><td class="r num">${ils(x.s.amount)}</td><td>${x.s.receipt_no ? `<span class="num">${esc(x.s.receipt_no)}</span>` : '<span class="pill pill--new">חסרה</span>'}</td></tr>`).join('')
         || '<tr><td colspan="6" class="empty">אין תשלומים בתקופה הזו.</td></tr>'}</tbody></table></div></section>`;
 }
 
@@ -316,7 +326,7 @@ function viewPeople() {
   if (S.ppl === 'reviews') {
     body = `<div class="panel">${S.reviews.map(r => {
       const img = r.photo_path ? `${C.supabaseUrl}/storage/v1/object/public/reviews/${r.photo_path}` : '';
-      return `<article class="rev">${img ? `<img src="${img}" alt="תמונה מהלקוח" loading="lazy">` : '<span></span>'}<div>
+      return `<article class="rev">${img ? `<img src="${esc(img)}" alt="תמונה מהלקוח" loading="lazy">` : '<span></span>'}<div>
         <span class="stars" aria-label="${r.rating} מתוך 5">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
         <span class="pill pill--${r.status === 'approved' ? 'ok' : r.status === 'pending' ? 'new' : 'cancelled'}">${{ pending: 'ממתינה', approved: 'באתר', hidden: 'מוסתרת' }[r.status]}</span>
         <p>“${esc(r.body)}”<br><small>${esc(r.display_name)} · Sway ${r.orders_v2?.order_no ?? ''}</small></p>
@@ -341,7 +351,7 @@ function viewPeople() {
 function orderDrawer(o) {
   const idx = { new: 0, paid: 1, ready: 2, collected: 3 }[o.status] ?? -1;
   const steps = ['ממתין לתשלום', 'שולם', 'מוכן', 'נאסף'];
-  const main = o.status === 'new' ? `<button class="btn btn--coral" data-pay="${o.id}">${ic('check', 'ic--sm')}ראיתי בביט, שולם ${ils(due(o))}</button>`
+  const main = o.status === 'new' ? `<button class="btn btn--coral" data-pay="${o.id}">${ic('check', 'ic--sm')}ראיתי בביט, שולם ${ils(payLabel(o))}</button>`
     : o.status === 'paid' ? `<button class="btn btn--main" data-st="${o.id}:ready">מוכן לאיסוף</button>`
     : o.status === 'ready' ? `<button class="btn btn--main" data-st="${o.id}:collected">נאסף</button>` : '';
   const shareBox = shares(o).map(s => `<div class="share"><span><b>${o.people > 1 ? (s.n === 1 ? 'המזמין' : 'משתתף ' + s.n) : 'תשלום'} · <span class="num">${ils(s.amount)}</span></b>
@@ -353,7 +363,7 @@ function orderDrawer(o) {
           <button class="btn btn--line btn--sm">שמירה</button></form>
           <button class="btn btn--ghost btn--sm" data-yesh="${o.id}:${s.id}">${ic('copy', 'ic--sm')}העתקה ליש חשבונית</button>` : ''}</div></div>`).join('');
   return `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh">
-    <header class="drawer__head"><h2 id="dh" class="num">Sway ${o.order_no}</h2>${pill(o)}<button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
+    <header class="drawer__head"><h2 id="dh" class="num" tabindex="-1">Sway ${o.order_no}</h2>${pill(o)}<button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
     <div class="drawer__body">
       ${idx >= 0 ? `<div><div class="steps">${steps.map((_, i) => `<span class="${i < idx ? 'on' : i === idx ? 'now' : ''}"></span>`).join('')}</div>
         <div class="steps-l">${steps.map(s => `<span>${s}</span>`).join('')}</div></div>` : ''}
@@ -382,7 +392,7 @@ function orderDrawer(o) {
 }
 
 const acctDrawer = () => `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh">
-  <header class="drawer__head"><h2 id="dh">החשבון שלי</h2><button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
+  <header class="drawer__head"><h2 id="dh" tabindex="-1">החשבון שלי</h2><button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
   <div class="drawer__body"><dl class="panel kv"><dt>שם משתמש</dt><dd>${esc(userOf(S.me))}</dd><dt>דוא״ל</dt><dd>${esc(S.me)}</dd></dl>
     <form class="panel box" data-pw><h3>החלפת סיסמה</h3>${pwFields()}<button class="btn btn--main">שמירת סיסמה</button><p class="msg" role="status"></p></form></div>
   <footer class="drawer__foot"><button class="btn btn--bad" data-logout>יציאה</button></footer></aside>`;
@@ -398,6 +408,8 @@ function render(force) {
   const { v, x } = route();
   const o = x && S.orders.find(k => k.order_no === +x);
   const scroll = $('.drawer__body')?.scrollTop;
+  const focusId = a?.id, caret = a?.selectionStart;
+  const key = o ? 'o' + o.order_no : S.acct ? 'acct' : '';
   const n = { today: tasks().length, people: S.reviews.filter(r => r.status === 'pending').length };
   const links = Object.entries(VIEWS).map(([k, [l, i]]) => `<a href="#${k}"${k === v ? ' aria-current="page"' : ''}>${ic(i)}<span>${l}</span>${n[k] ? `<span class="dot num">${n[k]}</span>` : ''}</a>`).join('');
   const liveTag = `<span class="live${S.live ? ' is-on' : ''}">${S.live ? 'מתעדכן לבד' : 'מתעדכן כל דקה'}</span>`;
@@ -410,6 +422,11 @@ function render(force) {
     ${o ? orderDrawer(o) : S.acct ? acctDrawer() : ''}`;
   document.documentElement.classList.toggle('lock', !!(o || S.acct));
   if (scroll) $('.drawer__body').scrollTop = scroll;
+  if (key && key === S.drawer) app.querySelectorAll('.drawer, .scrim').forEach(el => el.classList.add('still'));
+  $('.shell').inert = !!key;
+  if (focusId && document.getElementById(focusId)) { const el = document.getElementById(focusId); el.focus(); if (caret != null) try { el.setSelectionRange(caret, caret); } catch {} }
+  else if (key && key !== S.drawer) $('#dh')?.focus();
+  S.drawer = key;
   S.flash.clear();
 }
 
@@ -450,8 +467,9 @@ async function enter(session) {
   if (recovering) return gate('setpw');
   if (S.me === session.user.email) return;
   app.innerHTML = `<div class="gate"><div class="gate__box">${MARK}<div class="sk-line"></div><div class="sk-line" style="width:70%"></div></div></div>`;
-  const { data: ok } = await sb.rpc('is_admin');
-  if (!ok) { await sb.auth.signOut(); return gate('login', 'למשתמש הזה אין הרשאת ניהול.'); }
+  const { data: ok, error } = await sb.rpc('is_admin');
+  if (error) { app.innerHTML = `<div class="gate"><div class="gate__box">${MARK}<h1>אין חיבור</h1><p>${esc(error.message)}</p><button class="btn btn--main" onclick="location.reload()">לנסות שוב</button></div></div>`; return; }
+  if (!ok) { await sb.auth.signOut({ scope: 'local' }); return gate('login', 'למשתמש הזה אין הרשאת ניהול.'); }
   S.me = session.user.email;
   if (/access_token/.test(location.hash)) history.replaceState(null, '', location.pathname + '#today');
   try { await refresh(true); startLive(); } catch (err) { app.innerHTML = `<div class="gate"><div class="gate__box">${MARK}<h1>לא הצלחתי לטעון</h1><p>${esc(err.message)}</p><button class="btn btn--main" onclick="location.reload()">לנסות שוב</button></div></div>`; }
@@ -477,61 +495,77 @@ sb.auth.onAuthStateChange((evt, session) => {
 });
 
 // ---------- actions ----------
+const WHY = m => /bad_transition:(\w+)>(\w+)/.test(m) ? `אי אפשר לעבור מ"${ST[RegExp.$1]}" ל"${ST[RegExp.$2]}".`
+  : /changed/.test(m) ? 'ההזמנה השתנתה בינתיים (אולי מהוואטסאפ). רעננתי, לבדוק שוב.' : m;
 async function act(btn, fn, okMsg) {
-  btn?.classList.add('is-busy');
-  try { await fn(); if (okMsg) toast(okMsg); await refresh(true); }
-  catch (e) { btn?.classList.remove('is-busy'); toast('לא הצליח: ' + (e.message || e), null, true); }
+  if (btn) { btn.classList.add('is-busy'); btn.disabled = true; }
+  try { await fn(); }
+  catch (e) { if (btn) { btn.classList.remove('is-busy'); btn.disabled = false; } toast('לא הצליח: ' + WHY(e.message || String(e)), null, true); return refresh(true).catch(() => {}); }
+  if (okMsg) toast(okMsg);
+  await refresh(true).catch(() => toast('נשמר, אבל הרענון נכשל. לרענן את הדף.', null, true));
 }
 const byId = id => S.orders.find(o => o.id === +id);
-const setStatus = async (o, status) => must(await sb.from('orders_v2').update({ status }).eq('id', o.id));
+// only if the order is still in the state this page shows (the bot or a sweep may have moved it)
+const setStatus = async (o, status) => {
+  const { data } = must(await sb.from('orders_v2').update({ status }).eq('id', o.id).eq('status', o.status).select('id'));
+  if (!data.length) throw new Error('changed');
+};
 const DONE = { paid: 'סומן כשולם', ready: 'מוכן לאיסוף', collected: 'נאסף', cancelled: 'בוטל' };
 const told = st => st === 'cancelled' ? '' : '. הלקוח מקבל עדכון בוואטסאפ';
 
+// confirm the money; the database turns the order 'paid' once no share is left (sway_v5 sway_shares_paid).
+// A group order confirms only the shares that reported paying.
 async function payAll(o, method = 'bit') {
-  must(await sb.from('order_shares').update({ status: 'confirmed', method, confirmed_at: new Date().toISOString() }).eq('order_id', o.id).neq('status', 'confirmed'));
-  await setStatus(o, 'paid');
+  let q = sb.from('order_shares').update({ status: 'confirmed', method, confirmed_at: new Date().toISOString() }).eq('order_id', o.id);
+  q = o.people > 1 && reported(o) ? q.eq('status', 'reported') : q.neq('status', 'confirmed');
+  const { data } = must(await q.select('id'));
+  if (!data.length) throw new Error('changed');
 }
 
 app.addEventListener('click', async e => {
-  const b = e.target.closest('button, a[data-ppl]');
+  const b = e.target.closest('button, a[data-ppl], [data-close]');
   if (!b) return;
   const d = b.dataset;
   if (d.peek != null) { const i = b.previousElementSibling; i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'הצגה' : 'הסתרה'; return; }
   if (d.gate) return gate(d.gate);
   if (d.open) { location.hash = `#${route().v}/${d.open}`; return; }
-  if (d.close != null) { S.acct = false; location.hash = '#' + route().v; return render(true); }
+  if (d.close != null) return closeDrawer();
   if (d.acct != null) { S.acct = true; return render(true); }
-  if (d.logout != null) { S.acct = false; await sb.auth.signOut(); return; }
+  if (d.logout != null) { S.acct = false; await sb.auth.signOut({ scope: 'local' }); return; }
   if (d.mode) { S.mode = d.mode; return render(true); }
   if (d.period) { S.period = d.period; return render(true); }
   if (d.ppl) { S.ppl = d.ppl; if (b.tagName === 'BUTTON') render(true); return; }
   if (d.find) { S.q = d.find; S.mode = 'all'; location.hash = '#orders'; return; }
-  if (d.pay) { const o = byId(d.pay); return act(b, () => payAll(o), `Sway ${o.order_no} ${DONE.paid}${told('paid')}`); }
+  if (d.pay) {
+    const o = byId(d.pay), part = o.people > 1 && o.order_shares.some(s => s.status === 'waiting');
+    return act(b, () => payAll(o), part ? `אושר ${ils(payLabel(o))} ב־Sway ${o.order_no}. מחכים לשאר המשתתפים` : `Sway ${o.order_no} ${DONE.paid}${told('paid')}`);
+  }
   if (d.st) {
     const [id, st] = d.st.split(':'), o = byId(id);
-    if (st === 'cancelled' && !confirm(`לבטל את Sway ${o.order_no} של ${o.name}?`)) return;
+    if (st === 'cancelled' && !confirm(`לבטל את Sway ${o.order_no} של ${o.name}?${paid$(o) ? `\nכבר שולם ${ils(paid$(o))}: צריך להחזיר ללקוח.` : ''}\nהלקוח יקבל הודעה בוואטסאפ.`)) return;
     return act(b, () => setStatus(o, st), `Sway ${o.order_no} ${DONE[st]}${told(st)}`);
   }
   if (d.share) {
     const o = byId(d.order), method = app.querySelector(`[data-method="${d.share}"]`).value;
     return act(b, async () => {
-      must(await sb.from('order_shares').update({ status: 'confirmed', method, confirmed_at: new Date().toISOString() }).eq('id', d.share));
-      if (!o.order_shares.some(s => s.status !== 'confirmed' && s.id !== +d.share)) await setStatus(o, 'paid');
+      const { data } = must(await sb.from('order_shares').update({ status: 'confirmed', method, confirmed_at: new Date().toISOString() }).eq('id', d.share).neq('status', 'confirmed').select('id'));
+      if (!data.length) throw new Error('changed');
     }, 'התשלום אושר');
   }
   if (d.yesh) {
     const [oid, sid] = d.yesh.split(':'), o = byId(oid), s = o.order_shares.find(x => x.id === +sid);
+    window.open('https://user.yeshinvoice.co.il/', '_blank', 'noopener');   // first, while the tap still counts (Safari popups)
     await navigator.clipboard.writeText(receipt(o, s)).catch(() => {});
-    window.open('https://user.yeshinvoice.co.il/', '_blank', 'noopener');
     return toast('פרטי הקבלה הועתקו. אחרי שמפיקים, לרשום כאן את מספר הקבלה.');
   }
   if (d.rev) { const [id, status] = d.rev.split(':'); return act(b, async () => must(await sb.from('reviews').update({ status }).eq('id', id)), status === 'approved' ? 'הביקורת באתר' : 'הביקורת הוסתרה'); }
   if (d.csv != null) {
     const rows = [['תאריך', 'הזמנה', 'לקוח', 'טלפון', 'אמצעי', 'סכום', 'קבלה'],
       ...payments(S.period).map(x => [new Date(x.t).toLocaleDateString('he-IL'), ref(x.o, x.s), x.o.name, x.o.phone, METHOD[x.s.method] || 'ביט', x.s.amount, x.s.receipt_no || ''])];
-    const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const cell = c => { c = String(c); if (/^[=+\-@\t\r]/.test(c)) c = "'" + c; return `"${c.replace(/"/g, '""')}"`; };   // no Excel formulas
+    const csv = '\ufeff' + rows.map(r => r.map(cell).join(',')).join('\n');
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `sway-payments-${S.period}.csv` });
-    a.click(); URL.revokeObjectURL(a.href);
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
 });
 document.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) { location.hash = g.dataset.go; $('.toast').hidden = true; } });
@@ -575,10 +609,8 @@ app.addEventListener('submit', async e => {
   if (d.count) {
     const k = S.inv.find(x => x.colour === d.count), n = Math.round(+f.n.value);
     if (!(n >= 0)) return;
-    return act(btn, async () => {
-      must(await sb.from('inventory').update({ on_hand: n, updated_at: new Date().toISOString() }).eq('colour', k.colour));
-      must(await sb.from('inventory_log').insert({ colour: k.colour, delta: n - k.on_hand, on_hand: n, reason: f.reason.value.trim() || 'ספירה' }));
-    }, `${COLOUR[k.colour]}: ${n} במחסן`);
+    return act(btn, async () => must(await sb.rpc('set_stock', { p_colour: k.colour, p_on_hand: n, p_reason: f.reason.value.trim() || null })),
+      `${COLOUR[k.colour]}: ${n} במחסן`);
   }
 });
 
@@ -590,4 +622,12 @@ app.addEventListener('input', e => {
   const q = $('#q'); q.focus(); q.setSelectionRange(pos, pos);
 });
 window.addEventListener('hashchange', () => render(true));
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && (route().x || S.acct)) { S.acct = false; location.hash = '#' + route().v; render(true); } });
+// closing replaces the history entry (Back must not reopen it) and returns focus to the order that opened it
+function closeDrawer() {
+  const { v, x } = route();
+  S.acct = false;
+  history.replaceState(null, '', '#' + v);
+  render(true);
+  app.querySelector(`[data-open="${x}"]`)?.focus();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && (route().x || S.acct)) closeDrawer(); });

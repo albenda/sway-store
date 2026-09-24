@@ -24,6 +24,7 @@
   }
 
   function render() {
+    if (!/^[0-9a-f-]{36}$/i.test(token)) { app.innerHTML = `<h1>${t('rev.page')}</h1><p>${t('pay.notfound')}</p>`; return; }   // no link, no form
     const stars = [5, 4, 3, 2, 1].map(n =>
       `<input type="radio" name="rating" id="r${n}" value="${n}"><label for="r${n}" aria-label="${n}">★</label>`).join('');
     app.innerHTML = `<p class="kicker">Sway</p><h1>${t('rev.page')}</h1><p>${t('rev.intro')}</p>

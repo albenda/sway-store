@@ -129,14 +129,14 @@
       .replace('§R', `<a href="returns.html" target="_blank">${t('foot.returns')}</a>`);
     return `${header()}
       <form data-form novalidate>
-        ${field('name', 'co.name', 'text', 'autocomplete="name" required')}
+        ${field('name', 'co.name', 'text', 'autocomplete="name" required minlength="2" maxlength="80"')}
         ${field('phone', 'co.phone', 'tel', 'autocomplete="tel" inputmode="tel" dir="ltr" required')}
         ${field('email', 'co.email', 'email', 'autocomplete="email" inputmode="email" dir="ltr"')}
         <div class="co-row" style="margin-bottom:10px"><label for="co-gift">${t('co.gift')}<span class="co-hint" style="display:block">${t('co.gift.desc')}</span></label>
           <input class="co-toggle" id="co-gift" type="checkbox" ${S.gift ? 'checked' : ''}></div>
         ${S.gift ? `<div class="co-giftbox">${field('gnote', 'co.gnote', 'textarea', 'maxlength="300"')}</div>` : ''}
         ${pickupChoice()}
-        ${field('notes', 'co.notes', 'textarea')}
+        ${field('notes', 'co.notes', 'textarea', 'maxlength="500"')}
         <p class="co-consent">${consent}</p>
         ${summary(price())}
         <div class="co-actions"><button class="co-back" type="button" data-back>${t('co.back')}</button>
@@ -168,7 +168,8 @@
     // the order opens only when the customer sends it from their own WhatsApp; the bot then sends the Bit details
     const confirm = `<p class="co-label">${t('co.confirm.title')}</p><p class="co-hint">${t('co.confirm.body')}</p>
       <a class="save-selection" href="${wa(t('co.wa.confirm', { no: r.order_no }))}" target="_blank" rel="noopener">${t('co.confirm.btn')}${icon('up', 20, true)}</a>
-      <p class="co-hint">${t('co.confirm.after')}</p>`;
+      <p class="co-hint">${t('co.confirm.after')}</p>
+      <button class="co-back" type="button" data-new-order>${t('co.new')}</button>`;
     if (!S.group) return head + confirm;
     const base = siteBase();
     const rows = r.shares.map(s => {
@@ -187,6 +188,7 @@
   // photo follows the colour last picked (else the majority): a close-up of that fabric
   function view() { return S.view || (S.brown > S.blue ? 'brown' : 'blue'); }
   function render() {
+    dlg.dataset.step = S.step;   // site.js: no close on an outside tap once the customer is past step 1
     const photo = `assets/img/${view()}-detail.webp`;
     dlg.innerHTML = `<div class="purchase-layout">
       <button type="button" class="dialog-close" data-x aria-label="${t('close')}">${icon('x', 24)}</button>
@@ -197,7 +199,7 @@
   function readForm(form) {
     const d = Object.fromEntries(new FormData(form));
     Object.keys(d).forEach(k => { d[k] = String(d[k]).trim(); });
-    const tel = v => (v || '').replace(/\D/g, '').replace(/^972/, '0');
+    const tel = v => (v || '').replace(/\D/g, '').replace(/^(00)?972/, '0');
     d.phone = tel(d.phone);
     return d;
   }
@@ -243,6 +245,7 @@
       S.offline = !act;
     }
     S.busy = false; S.step = 3; render();
+    dlg.querySelector('#co-title')?.focus();   // screen readers hear the result, not silence
   }
 
   if (dlg) {
@@ -275,6 +278,7 @@
       return dlg.querySelector(`[data-people="${pp.dataset.people}"]:not(:disabled)`)?.focus();
     }
     if (el.closest('[data-next]')) { S.step = 2; render(); document.dispatchEvent(new Event('sway:details')); return dlg.querySelector('input')?.focus(); }
+    if (el.closest('[data-new-order]')) { Object.assign(S, { step: 1, res: null, offline: false, active: null }); return render(); }
     if (el.closest('[data-back]')) { S.f = readForm(dlg.querySelector('form')); S.step = 1; return render(); }
     const paid = el.closest('[data-paid]'); if (paid) api('report_share_paid', { p_token: paid.dataset.paid }).catch(() => {});
   });
@@ -288,7 +292,8 @@
 
   window.Order = {
     open({ colour = 'blue', group = false } = {}) {
-      if (S.step === 3) Object.assign(S, { step: 1, res: null, offline: false, active: null });
+      // a created order stays on its confirm step until the customer starts a new one (the link must not get lost)
+      if (S.step === 3 && !S.res) Object.assign(S, { step: 1, res: null, offline: false, active: null });
       if (!S.res && S.step === 1 && qty() <= 1) { S.blue = colour === 'blue' ? 1 : 0; S.brown = colour === 'brown' ? 1 : 0; S.view = null; }
       S.group = group || S.group;
       render();
@@ -306,6 +311,11 @@
     app.innerHTML = `<p>${t('pay.loading')}</p>`;
     let d;
     try { d = await api('get_share_v2', { p_token: token }); } catch (e) { app.innerHTML = `<h1>${t('pay.title')}</h1><p>${t('pay.notfound')}</p>`; return; }
+    // no payment card before the organiser confirms on WhatsApp, or after the order is cancelled
+    if (d.order_status === 'pending' || d.order_status === 'cancelled') {
+      app.innerHTML = `<h1>${t('pay.title')}</h1><p>${t(d.order_status === 'pending' ? 'pay.pending' : 'pay.cancelled')}</p><p style="margin-top:28px"><a href="./">${t('pay.about')}</a></p>`;
+      return;
+    }
     const ref = `Sway ${d.order_no}-${d.n}`;
     const pct = Math.round(100 * d.paid_count / d.people);
     const state = d.status === 'confirmed' ? `<p><span class="badge badge--confirmed">${t('pay.confirmed')}</span></p>`

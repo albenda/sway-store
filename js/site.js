@@ -257,7 +257,7 @@
     arDialog.showModal();
   }));
   $$('dialog [data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
-  $$('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+  $$('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d && !(d.dataset.step > 1)) d.close(); }));
 
   // desktop: QR code that opens this page on the phone, straight at the AR section
   if (matchMedia('(pointer: fine)').matches) {

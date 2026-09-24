@@ -6,7 +6,7 @@
 @font-face{font-family:'Assistant';font-weight:200 800;font-display:swap;src:url('../assets/fonts/Assistant-var-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2212}
 
 :root{
-  --ivory:#f8f4e9; --paper:#efe8d8; --card:#fffdf7; --ink:#102f3c; --muted:#49606a; --faint:#6d7f86;
+  --ivory:#f8f4e9; --paper:#efe8d8; --card:#fffdf7; --ink:#102f3c; --muted:#49606a; --faint:#5d6f76;
   --rule:#102f3c1f; --rule-2:#102f3c33; --blue:#247c9b; --blue-soft:#247c9b14;
   --coral:#ed8a77; --coral-ink:#b8503c; --coral-soft:#ed8a771f;
   --ok:#2f7a5b; --ok-soft:#2f7a5b17; --warn:#a8641a; --warn-soft:#e0a2481f; --bad:#b23b2e;
@@ -152,7 +152,7 @@ button:disabled{cursor:not-allowed;opacity:.5}
 .all-clear span{color:var(--muted)}
 
 /* ---------- orders board ---------- */
-.board{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:14px;align-items:start}
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;align-items:start}
 .col{background:var(--paper);border-radius:var(--r);padding:10px;min-height:120px}
 .col>header{display:flex;align-items:center;gap:8px;padding:4px 6px 10px;font-weight:700;font-size:14px}
 .col>header .n{margin-inline-start:auto;color:var(--muted);font-weight:700}
@@ -187,6 +187,7 @@ button:disabled{cursor:not-allowed;opacity:.5}
 .drawer{position:fixed;inset-block:0;inset-inline-end:0;width:min(520px,100%);background:var(--ivory);z-index:51;display:flex;flex-direction:column;box-shadow:0 0 60px -10px #102f3c66;animation:slide .22s cubic-bezier(.2,.8,.2,1)}
 [dir=rtl] .drawer{animation-name:slide-rtl}
 @keyframes fade{from{opacity:0}}
+.drawer.still,.scrim.still{animation:none!important}
 @keyframes slide{from{transform:translateX(24px);opacity:0}}
 @keyframes slide-rtl{from{transform:translateX(-24px);opacity:0}}
 .drawer__head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--rule);background:var(--paper)}
@@ -316,5 +317,7 @@ button:disabled{cursor:not-allowed;opacity:.5}
   .drawer{width:100%;inset-block-start:auto;max-height:94dvh;border-radius:18px 18px 0 0;animation-name:up!important}
   @keyframes up{from{transform:translateY(40px);opacity:0}}
   .toast{bottom:calc(var(--tab) + 14px + env(safe-area-inset-bottom))}
+  html.lock .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+  input,select,textarea{font-size:16px!important}   /* iOS zooms into smaller fields */
 }
 @media (prefers-reduced-motion:reduce){*,:before,:after{animation-duration:.001ms!important;transition-duration:.001ms!important}}
