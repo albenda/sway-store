@@ -438,7 +438,8 @@ function viewPartners() {
       <div class="panel" style="overflow-x:auto"><table class="tbl ptbl"><thead><tr><th>ספק</th><th class="r">מחיר</th><th class="r">הזמנות</th><th class="r">ערסלים</th><th class="r">שולם</th><th class="r">יתרה</th><th>הזמנה אחרונה</th><th></th></tr></thead><tbody>
       ${list.map(r => { const os = rsOrders(r), un = unpaidOrders(r), late = overdue(r).length, ow = rsOwed(r), last = os[0];
         return `<tr${r.active ? '' : ' class="off"'}><td><button class="linkish" data-rsl="${r.id}"><b>${esc(r.name)}</b></button>${r.business_name ? `<br><small>${esc(r.business_name)}</small>` : ''}${r.active ? '' : ' <span class="pill">לא פעיל</span>'}</td>
-          <td class="r num">${ils(r.unit_price)}<br><small>${rsOff(r)}% הנחה</small></td><td class="r num">${os.length}</td><td class="r num">${os.reduce((a, o) => a + o.qty, 0)}</td>
+          <td class="r num">${S.pedit === r.id ? `<form class="rc" data-pprice="${r.id}"><input name="p" type="number" inputmode="numeric" min="1" max="450" value="${r.unit_price}" aria-label="מחיר ליחידה" style="width:80px"><button class="btn btn--main btn--sm">שמירה</button></form>`
+            : `<button class="pricebtn" data-pedit="${r.id}" aria-label="שינוי המחיר של ${esc(r.name)}"><b>${ils(r.unit_price)}</b> ✎</button>`}<br><small>${rsOff(r)}% הנחה</small></td><td class="r num">${os.length}</td><td class="r num">${os.reduce((a, o) => a + o.qty, 0)}</td>
           <td class="r num">${ils(rsPaid(r))}</td>
           <td class="r num">${ow > 0 ? `<b style="color:var(--coral-ink)">${ils(ow)}</b>${un.length ? `<br><span class="pill ${late ? 'pill--cancelled' : 'pill--new'}">${late ? 'באיחור' : 'פתוח'} · ${un[0].days} ימים</span>` : ''}` : ow < 0 ? `זכות ${ils(-ow)}` : '<span class="pill pill--ok">מאופס</span>'}</td>
           <td>${last ? ago(last.created_at) : '—'}</td>
@@ -652,7 +653,7 @@ function rslDrawer(id) {
         <div><span>יתרה</span><b class="num" style="color:${ow > 0 ? 'var(--coral-ink)' : 'var(--ok)'}">${ow > 0 ? ils(ow) : ow < 0 ? 'זכות ' + ils(-ow) : '₪0'}</b><small>${late.length ? `${ils(late.reduce((a, x) => a + x.left, 0))} באיחור` : `תנאים: ${r.terms_days ?? 30} יום`}</small></div>
         <div><span>חויב עד היום</span><b class="num">${ils(billed)}</b><small>${rsOrders(r).length} הזמנות</small></div>
         <div><span>שולם</span><b class="num">${ils(rsPaid(r))}</b><small>${rsPays(r).length} תשלומים</small></div>
-        <div><span>ערסלים</span><b class="num">${units}</b><small>${ils(r.unit_price)} ליחידה · ${rsOff(r)}% הנחה</small></div>
+        <div><span>מחיר ליחידה</span><b class="num">${ils(r.unit_price)} <button class="pricebtn" data-pact="edit" aria-label="שינוי מחיר">✎</button></b><small>${rsOff(r)}% הנחה · ${units} ערסלים עד היום</small></div>
       </div>
       <div class="tmpl">
         <button class="btn btn--main btn--sm" data-pact="order">${ic('plus', 'ic--sm')}הזמנה ידנית</button>
@@ -868,6 +869,7 @@ app.addEventListener('click', async e => {
   if (d.rsl) { S.rsl = +d.rsl; S.pact = ''; return render(true); }
   if (d.pact) { S.pact = S.pact === d.pact ? '' : d.pact; return render(true); }
   if (d.pnew != null) { S.pnew = !S.pnew; return render(true); }
+  if (d.pedit) { S.pedit = +d.pedit; render(true); return app.querySelector(`[data-pprice="${d.pedit}"] input`)?.select(); }
   if (d.more != null) { S.more = true; return render(true); }
   if (d.mclose != null) { S.more = false; return render(true); }
   if (d.pcsv) {
@@ -994,6 +996,12 @@ app.addEventListener('submit', async e => {
   }
   if (d.rsPay) return act(btn, async () => { must(await sb.from('reseller_payments').insert({ reseller_id: +d.rsPay, amount: +f.amount.value, day: f.day.value,
     method: f.method.value, receipt_no: f.receipt.value.trim() || null })); S.pact = ''; }, 'התשלום נרשם');
+  if (d.pprice) {
+    const v = Math.round(+f.p.value);
+    if (!(v >= 1 && v <= C.price)) return toast(`מחיר בין ₪1 ל־₪${C.price}`, null, true);
+    return act(btn, async () => { must(await sb.from('resellers').update({ unit_price: v, updated_at: new Date().toISOString() }).eq('id', d.pprice)); S.pedit = 0; },
+      `המחיר עודכן ל־${ils(v)}. הזמנות קיימות נשארות במחיר הקודם`);
+  }
   if (d.rprc) return act(btn, async () => must(await sb.from('reseller_payments').update({ receipt_no: f.rc.value.trim() || null }).eq('id', d.rprc)), 'מספר החשבונית נשמר');
   if (d.pOrder) {
     const r = S.resellers.find(x => x.id === +d.pOrder), blue = Math.max(0, +f.blue.value | 0), brown = Math.max(0, +f.brown.value | 0), qty = blue + brown;

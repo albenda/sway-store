@@ -381,6 +381,9 @@ a.stat:hover{background:#fffaf0}
 .task__do .rc{flex:1 1 100%}
 @media (max-width:900px){
   .btn--sm{min-height:40px}
-  .ptbl th:nth-child(2),.ptbl td:nth-child(2),.ptbl th:nth-child(3),.ptbl td:nth-child(3),.ptbl th:nth-child(4),.ptbl td:nth-child(4),.ptbl th:nth-child(5),.ptbl td:nth-child(5),.ptbl th:nth-child(7),.ptbl td:nth-child(7){display:none}
+  .ptbl th:nth-child(3),.ptbl td:nth-child(3),.ptbl th:nth-child(4),.ptbl td:nth-child(4),.ptbl th:nth-child(5),.ptbl td:nth-child(5),.ptbl th:nth-child(7),.ptbl td:nth-child(7){display:none}
   .board .col>header{display:none}
 }
+
+.pricebtn{border:0;background:none;padding:2px 4px;border-radius:6px;cursor:pointer;color:inherit;font:inherit}
+.pricebtn:hover{background:var(--blue-soft)}
