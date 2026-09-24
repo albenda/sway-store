@@ -5,8 +5,9 @@ window.SWAY = {
   whatsapp: '972526849887',  // orders + confirmations (payments stay on bitPhone)
   bitPhone: '055-2555269',
   payboxLink: '',            // permanent PayBox group link; empty = hide PayBox
-  supabaseUrl: 'https://fawifuxyaltvkfkmsuko.supabase.co',
-  supabaseKey: 'sb_publishable_fJMqMfcKPaJlxurR6xFohA_2E6NdZpA', // publishable, client-safe
+  // private Supabase: organization "Sway", project "sway" (not the Cynect work account)
+  supabaseUrl: 'https://flrgoetjaeabbesrmodx.supabase.co',
+  supabaseKey: 'sb_publishable_JcSDZWOYYAasddb5LtLdAw_r7VZmaIu', // publishable, client-safe
   // self pickup only for now (Ashdod, HaMatechet 21 / Nes Ziona, 2-3 days). Home delivery returns later:
   // js/cities.js + tools/shipping_seed.py + shipping_zones are kept for that.
   groupDiscount: { perUnit: 20, minQty: 3 },
