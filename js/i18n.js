@@ -174,6 +174,18 @@ const DICT = {
     'co.notify.btn': 'תודיעו לי',
     'co.notify.ok': 'רשמנו. תקבלו הודעה אחת בוואטסאפ כשהוא חוזר.',
     'co.notify.err': 'לא הצלחנו לשמור. נסו שוב בעוד רגע.',
+    'co.optin': 'אשמח לקבל בוואטסאפ עדכונים ומבצעים, לא יותר מפעם בחודש.',
+    'pt.title': 'בחירת שעה לאיסוף',
+    'pt.hello': 'היי {name}, מתי נוח לכם לאסוף?',
+    'pt.where': 'אשדוד, {address}. הזמנה Sway {no}.',
+    'pt.chosen': 'נתראה {when}.',
+    'pt.change': 'רוצים לשנות? בחרו שעה אחרת.',
+    'pt.saved': 'נשמר. נתראה {when}, ונעדכן אם משהו משתנה.',
+    'pt.nz': 'האיסוף שלכם הוא מנס ציונה. נתאם איתכם את השעה בוואטסאפ.',
+    'pt.closed': 'ההזמנה הזו כבר לא פתוחה לאיסוף.',
+    'pt.err': 'לא הצלחנו לשמור. נסו שעה אחרת.',
+    'pt.none': 'אין כרגע שעות פנויות. כתבו לנו בוואטסאפ ונתאם.',
+    'pt.at': 'בשעה',
     'co.err.soldout': 'הצבע שבחרתם אזל הרגע. בחרו צבע אחר, או השאירו מספר ונודיע כשיחזור.',
 
     'co.email': 'דוא״ל, לשליחת הקבלה (לא חובה)',
@@ -512,6 +524,18 @@ const DICT = {
     'co.notify.btn': 'Notify me',
     'co.notify.ok': 'Done. You will get one WhatsApp message when it is back.',
     'co.notify.err': 'That did not save. Try again in a moment.',
+    'co.optin': 'Send me updates and offers on WhatsApp, at most once a month.',
+    'pt.title': 'Choose a pickup time',
+    'pt.hello': 'Hi {name}, when suits you to pick it up?',
+    'pt.where': 'Ashdod, {address}. Order Sway {no}.',
+    'pt.chosen': 'See you {when}.',
+    'pt.change': 'Want to change it? Pick another time.',
+    'pt.saved': 'Saved. See you {when}; we will let you know if anything changes.',
+    'pt.nz': 'Your pickup is in Nes Ziona. We will set the time with you on WhatsApp.',
+    'pt.closed': 'This order is no longer open for pickup.',
+    'pt.err': 'That did not save. Try another time.',
+    'pt.none': 'No open times right now. Message us on WhatsApp and we will arrange it.',
+    'pt.at': 'at',
     'co.err.soldout': 'That colour just sold out. Pick the other one, or leave your number and we will tell you when it is back.',
 
     'co.email': 'Email, for your receipt (optional)',
@@ -743,6 +767,13 @@ const I18N = {
     document.dispatchEvent(new Event('shopchange'));
   }
 };
+// A/B test of the order button: each visit gets one wording for its whole stay (track.js reports it, the admin
+// page's "אתר" view compares them). A = the original.
+if (typeof window !== 'undefined') {
+  let ab = null;
+  try { ab = sessionStorage.getItem('sway-ab'); if (!ab) { ab = Math.random() < 0.5 ? 'A' : 'B'; sessionStorage.setItem('sway-ab', ab); } } catch (e) {}
+  if (ab === 'B') { DICT.he['cta.choose'] = 'להזמנה'; DICT.en['cta.choose'] = 'Order now'; }
+}
 // the shop's live settings (one small request; the page works with the defaults if it fails)
 if (typeof window !== 'undefined' && window.SWAY?.supabaseUrl) addEventListener('DOMContentLoaded', () => {
   fetch(`${SWAY.supabaseUrl}/rest/v1/rpc/shop_settings`, { method: 'POST', headers: { apikey: SWAY.supabaseKey, 'Content-Type': 'application/json' }, body: '{}' })

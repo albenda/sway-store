@@ -151,7 +151,7 @@
   }
   $$('input[name="story-colour"]').forEach(i => i.addEventListener('change', () => setColour(i.value)));
   document.addEventListener('langchange', () => setColour(state.colour));
-  setColour('blue');
+  setColour(new URLSearchParams(location.search).get('colour') === 'brown' ? 'brown' : 'blue');   // ?colour= (Google Shopping links)
   // warm the brown photo once the page is idle, so switching is instant
   addEventListener('load', () => setTimeout(() => { new Image().src = IMG.brown; }, 1500));
 

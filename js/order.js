@@ -184,6 +184,7 @@
         ${S.gift ? `<div class="co-giftbox">${field('gnote', 'co.gnote', 'textarea', 'maxlength="300"')}</div>` : ''}
         ${pickupChoice()}
         ${field('notes', 'co.notes', 'textarea', 'maxlength="500"')}
+        <label class="co-optin"><input type="checkbox" name="optin" ${S.f.optin ? 'checked' : ''}><span>${t('co.optin')}</span></label>
         <p class="co-consent">${consent}</p>
         ${summary(price())}
         <div class="co-actions"><button class="co-back" type="button" data-back>${t('co.back')}</button>
@@ -303,6 +304,7 @@
       });
       S.offline = false; S.active = null;
       try { localStorage.setItem('sway-pending', JSON.stringify({ no: S.res.order_no, token: S.res.order_token, at: Date.now() })); } catch {}
+      if (S.f.optin) api('set_marketing_ok', { p_token: S.res.order_token, p_ok: true }, true).catch(() => {});
       document.dispatchEvent(new CustomEvent('sway:order', { detail: { value: S.res.amount, qty: qty(), no: S.res.order_no } }));
     } catch (e) {
       if (/soldout/.test(String(e && e.message))) {   // the colour sold out while this page was open
@@ -311,6 +313,7 @@
         Object.assign(S, { busy: false, step: 1, soldoutErr: true }); return render();
       }
       const act = String(e && e.message).match(/active_order:(\d+)/);   // one active order per phone
+      if (!act) window.SwayTrack?.err('order: ' + String(e && e.message).slice(0, 45));
       S.active = act ? act[1] : null;
       S.offline = !act;
     }
@@ -460,6 +463,71 @@
       <ul class="shares">${rows}</ul>`;
   }
 
+  /* ================= pickup.html (choose a pickup time, Ashdod) ================= */
+  // opening days and hours come from the admin page ("א׳-ה׳", "08:30-14:30"); slots every 30 minutes, from an hour ahead
+  const TZ = 'Asia/Jerusalem';
+  function openDays(txt) {
+    const L = 'אבגדהוש', out = new Set();
+    String(txt || '').replace(/[׳']/g, '').split(/[,،]/).forEach(part => {
+      const m = part.match(/([א-ש])\s*-\s*([א-ש])/), one = part.match(/[א-ש]/);
+      if (m && L.includes(m[1]) && L.includes(m[2])) for (let i = L.indexOf(m[1]); i <= L.indexOf(m[2]); i++) out.add(i);
+      else if (one && L.includes(one[0])) out.add(L.indexOf(one[0]));
+    });
+    return out.size ? out : new Set([0, 1, 2, 3, 4]);
+  }
+  // an Israel wall-clock time > the real moment (handles summer/winter time)
+  function ilTime(y, mo, d, h, mi) {
+    let t = Date.UTC(y, mo - 1, d, h, mi) - 3 * 36e5;
+    for (let k = 0; k < 2; k++) {
+      const [hh, mm] = new Date(t).toLocaleTimeString('en-GB', { timeZone: TZ, hour12: false }).split(':').map(Number);
+      t += ((h - hh) * 60 + (mi - mm)) * 6e4;
+    }
+    return new Date(t);
+  }
+  const fmt = (d, o) => d.toLocaleString(I18N.lang === 'en' ? 'en-GB' : 'he-IL', { timeZone: TZ, ...o });
+  const whenTxt = d => `${fmt(d, { weekday: 'long', day: 'numeric', month: 'numeric' })} ${t('pt.at')} ${fmt(d, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}`;
+
+  async function pickupPage(app) {
+    const token = new URLSearchParams(location.search).get('o');
+    app.innerHTML = `<p>${t('pay.loading')}</p>`;
+    let d;
+    try { d = await api('get_pickup', { p_token: token }); } catch (e) { app.innerHTML = `<h1>${t('pt.title')}</h1><p>${t('pay.notfound')}</p>`; return; }
+    const head = `<p class="kicker">${t('pt.title')}</p><h1>${t('pt.hello', { name: esc(d.name || '') })}</h1>`;
+    if (d.pickup === 'nesziona') { app.innerHTML = head + `<p>${t('pt.nz')}</p>`; return; }
+    if (!['new', 'paid', 'ready'].includes(d.status)) { app.innerHTML = head + `<p>${t('pt.closed')}</p>`; return; }
+    const days = openDays(d.days), hm = String(d.hours || '').match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/) || [0, 8, 30, 14, 30];
+    const [from, to] = [+hm[1] * 60 + +hm[2], +hm[3] * 60 + +hm[4]];
+    const groups = [];
+    for (let i = 0; i < 21 && groups.length < 6; i++) {
+      const [y, mo, dd] = new Date(Date.now() + i * 864e5).toLocaleDateString('sv-SE', { timeZone: TZ }).split('-').map(Number);
+      const noon = ilTime(y, mo, dd, 12, 0);
+      if (!days.has(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(noon.toLocaleDateString('en-US', { timeZone: TZ, weekday: 'short' })))) continue;
+      const slots = [];
+      for (let m = from; m + 30 <= to; m += 30) { const at = ilTime(y, mo, dd, Math.floor(m / 60), m % 60); if (at - Date.now() > 36e5) slots.push(at); }
+      if (slots.length) groups.push({ label: fmt(noon, { weekday: 'long', day: 'numeric', month: 'numeric' }), slots });
+    }
+    const cur = d.pickup_at ? new Date(d.pickup_at) : null;
+    const draw = (msg = '') => {
+      app.innerHTML = head + `<p>${t('pt.where', { address: esc(d.address || 'רחוב המתכת 21'), no: esc(d.order_no) })}</p>
+        ${msg}${cur && !msg ? `<p class="pt-ok">${t('pt.chosen', { when: whenTxt(cur) })}</p><p>${t('pt.change')}</p>` : ''}
+        ${groups.length ? groups.map(g => `<p class="pt-day">${g.label}</p><div class="pt-slots" role="group" aria-label="${g.label}">${g.slots.map(s =>
+          `<button type="button" data-at="${s.toISOString()}" aria-pressed="${!!cur && +cur === +s}">${fmt(s, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}</button>`).join('')}</div>`).join('')
+          : `<p>${t('pt.none')}</p>`}
+        <p class="co-err" data-pt-err></p>`;
+    };
+    draw();
+    app.onclick = async e => {
+      const b = e.target.closest('[data-at]');
+      if (!b) return;
+      b.disabled = true;
+      try {
+        await api('set_pickup', { p_token: token, p_at: b.dataset.at });
+        d.pickup_at = b.dataset.at;
+        draw(`<p class="pt-ok" role="status">${t('pt.saved', { when: whenTxt(new Date(b.dataset.at)) })}</p>`);
+      } catch (x) { b.disabled = false; app.querySelector('[data-pt-err]').textContent = t('pt.err'); }
+    };
+  }
+
   // an order made here but not yet confirmed on WhatsApp: a thin bar on every visit until it is, or the hour is over
   (async () => {
     let p; try { p = JSON.parse(localStorage.getItem('sway-pending') || 'null'); } catch {}
@@ -479,7 +547,7 @@
     I18N.init();
     document.querySelectorAll('[data-lang-toggle]').forEach(b => b.addEventListener('click', () => I18N.set(I18N.lang === 'he' ? 'en' : 'he')));
     const app = document.getElementById('app');
-    const run = () => (page === 'pay' ? payPage(app) : orderPage(app));
+    const run = () => (page === 'pay' ? payPage(app) : page === 'pickup' ? pickupPage(app) : orderPage(app));
     document.addEventListener('langchange', run);
     run();
   }

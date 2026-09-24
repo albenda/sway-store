@@ -40,6 +40,14 @@
   window.SwayTrack = { push };
 
   push('view');
+  let ab = null; try { ab = sessionStorage.getItem('sway-ab'); } catch {}
+  if (ab) push('ab', 'cta:' + ab, true);   // the order-button test (i18n.js); results per visit
+  // something broke in the browser: counted, and the bot warns the owner when it repeats (at most 3 per visit)
+  let errs = 0;
+  const err = m => { if (errs++ < 3) { push('err', String(m || 'error').slice(0, 55)); flush(); } };
+  addEventListener('error', e => err(e.message));
+  addEventListener('unhandledrejection', e => err(e.reason && e.reason.message));
+  window.SwayTrack.err = err;
   // the checkout and the order (order.js dispatches these)
   document.addEventListener('sway:checkout', () => push('checkout', null, true));
   document.addEventListener('sway:details', () => push('details', null, true));

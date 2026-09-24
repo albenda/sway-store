@@ -563,3 +563,12 @@ html[lang=he] [lang=en],html[lang=en] [lang=he]{display:none}
 .co-notify{margin:4px 0 12px;padding:12px 14px;border-radius:12px;background:rgba(237,138,119,.1)}
 .co-notify p{margin:0 0 8px;font-size:13px;line-height:1.5}
 .co-notify .co-coupon__row input{text-transform:none;letter-spacing:0}
+.co-optin{display:flex;gap:10px;align-items:flex-start;margin:14px 0 4px;font-size:13px;line-height:1.5;color:var(--sway-muted);cursor:pointer}
+.co-optin input{width:18px;height:18px;margin-top:1px;accent-color:var(--sway-coral);flex:none}
+/* pickup.html */
+.pt-day{margin:22px 0 8px;font-weight:700}
+.pt-slots{display:flex;flex-wrap:wrap;gap:8px}
+.pt-slots button{min-width:74px;height:44px;border:1px solid var(--sway-rule);border-radius:10px;background:#fff;font:600 15px var(--sway-sans);color:var(--sway-ink);cursor:pointer}
+.pt-slots button[aria-pressed=true]{background:var(--sway-ink);color:#fff;border-color:var(--sway-ink)}
+.pt-slots button:focus-visible{outline:2px solid var(--sway-coral);outline-offset:2px}
+.pt-ok{padding:14px 16px;border-radius:12px;background:rgba(47,122,91,.1);color:#1f5c43;font-weight:600}

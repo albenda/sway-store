@@ -67,7 +67,7 @@ const T = {
   remind: o => `היי ${first(o.name)}, ההזמנה Sway ${o.order_no} עדיין מחכה לתשלום (${ils(due(o))} ב־PayBox או בביט, למספר ${C.bitPhone}). יש שאלה? אני כאן.`,
   ready: o => o.pickup === 'nesziona'
     ? `היי ${first(o.name)}, הערסל מחכה לך בנס ציונה. מתי נוח לך לאסוף?`
-    : `היי ${first(o.name)}, הערסל מוכן לאיסוף באשדוד, רחוב המתכת 21 (א׳-ה׳, 08:30-14:30). מתי נוח לך להגיע?`,
+    : `היי ${first(o.name)}, הערסל מוכן לאיסוף באשדוד, ${S.settings.ashdod_address || 'רחוב המתכת 21'} (${S.settings.ashdod_days || 'א׳-ה׳'}, ${S.settings.ashdod_hours || '08:30-14:30'}). אפשר לבחור שעה כאן: ${base}pickup.html?o=${o.token}`,
   review: o => `היי ${first(o.name)}, מקווים שאתם נהנים מהערסל. נשמח לביקורת קצרה, עם תמונה אם בא לכם: ${base}review.html?o=${o.token}`,
   draft: d => `היי ${first(d.name)}, ראיתי שהתחלת להזמין ערסל Sway ולא סיימת. אפשר להמשיך בדיוק מאיפה שעצרת: ${base}?d=${d.token}\nיש שאלה? אני כאן.`
 };
@@ -77,7 +77,7 @@ const payBtns = (o, size, short) => ['paybox', 'bit'].map(m =>
 const receipt = (o, s) => `קבלה\nלקוח: ${o.name}\nטלפון: ${o.phone}${o.email ? `\nדוא״ל: ${o.email}` : ''}\nפריט: ערסל Sway, ${items(o)}\nסכום: ${s.amount} ₪\nאמצעי תשלום: ${METHOD[s.method] || 'לא צוין'}\nתאריך: ${new Date(s.confirmed_at || Date.now()).toLocaleDateString('he-IL')}\nאסמכתא: ${ref(o, s)}`;
 
 // ---------- state + data ----------
-const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, walog: [], recurring: [], purchases: [], sent: new Set(), bc: { who: 'buyers', text: '' }, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', speriod: '7', stats: {}, drafts: [], waitlist: [], links: [], more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
+const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, walog: [], recurring: [], purchases: [], sent: new Set(), bc: { who: 'optin', text: '' }, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', speriod: '7', stats: {}, drafts: [], waitlist: [], links: [], more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
 const must = r => { if (r.error) throw r.error; return r; };
 
 let seq = 0, snap = '';
@@ -169,11 +169,18 @@ function printLabels(list) {
     @media print{@page{size:A4;margin:8mm}}</style>${list.map(box).join('')}<script>onload=()=>print()<\/script>`);
   w.document.close();
 }
-const BCAST = { buyers: 'כל מי שקנה', collected: 'מי שכבר אסף', vip: 'מתויגים VIP', repeat: 'לקוחות חוזרים', quiet: 'לא הזמינו 90 יום' };
+const BCAST = { optin: 'הסכימו לקבל עדכונים', buyers: 'כל מי שקנה', collected: 'מי שכבר אסף', vip: 'מתויגים VIP', repeat: 'לקוחות חוזרים', quiet: 'לא הזמינו 90 יום' };
+// ready texts for the owner's own WhatsApp (he edits before sending); {שם} becomes the customer's first name
+const HOLIDAY = {
+  'ראש השנה': 'היי {שם}, שנה טובה מ־Sway! מקווים שהערסל מלווה אתכם. מחפשים מתנה לחג? חבר שמזמין עם הקוד שלך מקבל הנחה.',
+  'סוכות': 'היי {שם}, חג שמח מ־Sway! ערסל בסוכה זה הדבר הכי טוב שקרה לחול המועד. עד 10.10 יש 10% הנחה עם הקוד SUKKOT2026: swayil.co.il',
+  'פסח': 'היי {שם}, חג שמח מ־Sway! לקראת הטיולים של החופש, ערסל שנכנס לתיק. מתנה מושלמת: swayil.co.il',
+  'קיץ': 'היי {שם}, הקיץ כאן. אם בא לכם ערסל שני לחוף או למרפסת של ההורים, יש זוג ב־₪850: swayil.co.il',
+};
 function bcList() {
   const cs = customers().filter(c => c.orders > 0);
   const lastOf = c => Math.max(...S.orders.filter(o => o.phone === c.phone).map(o => Date.parse(o.created_at)));
-  return cs.filter(c => ({ buyers: c.paid > 0, collected: S.orders.some(o => o.phone === c.phone && o.status === 'collected'),
+  return cs.filter(c => ({ optin: S.orders.some(o => o.phone === c.phone && o.marketing_ok), buyers: c.paid > 0, collected: S.orders.some(o => o.phone === c.phone && o.status === 'collected'),
     vip: (S.notes[c.phone]?.tags || []).includes('VIP'), repeat: c.orders > 1, quiet: c.paid > 0 && Date.now() - lastOf(c) > 90 * 864e5 })[S.bc.who]);
 }
 
@@ -249,7 +256,7 @@ function tasks() {
       `<button class="btn btn--main btn--sm" data-st="${o.id}:ready">מוכן לאיסוף</button>${open(o)}`);
     if (o.status === 'ready' && o.pickup === 'courier') add(0, 'pin', o, `מחכה לשליח: ${esc(o.name)}`, `Sway ${o.order_no} · ${items(o)}`,
       `<button class="btn btn--main btn--sm" data-st="${o.id}:collected">השליח לקח</button>`);
-    else if (o.status === 'ready') add(0, 'pin', o, `מחכה לאיסוף ב${PICK[o.pickup] || 'נקודת האיסוף'}`, `Sway ${o.order_no} · ${esc(o.name)} · ${esc(o.phone)}`,
+    else if (o.status === 'ready') add(o.pickup_at && hours(o.pickup_at) > -3 && hours(o.pickup_at) < 1 ? 1 : 0, 'pin', o, o.pickup_at ? `איסוף ${when(o.pickup_at)}` : `מחכה לאיסוף ב${PICK[o.pickup] || 'נקודת האיסוף'}`, `Sway ${o.order_no} · ${esc(o.name)} · ${esc(o.phone)}`,
       `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.ready(o))}">${ic('wa', 'ic--sm')}תיאום</a><button class="btn btn--main btn--sm" data-st="${o.id}:collected">נאסף</button>`);
     if (o.status !== 'cancelled') for (const s of o.order_shares) if (s.status === 'confirmed' && !s.receipt_no && !s.refunded_at) receipts.push({ o, s });
     // dad has not pressed "קיבלתי" 3 hours after the payment: Alon's blind spot when he is abroad
@@ -258,6 +265,8 @@ function tasks() {
       add(2, 'wa', o, 'אבא עוד לא אישר', `Sway ${o.order_no} · ${items(o)} · שולם ${ago(paidAt)}`,
         `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(dadPhone(), dadText(o))}">${ic('wa', 'ic--sm')}לשלוח לאבא שוב</a>${open(o)}`);
   }
+  for (const k of stock()) { const f = forecast(k);
+    if (f.orderBy && f.orderBy - Date.now() < 7 * 864e5) add(1, 'stock', null, `להזמין ${COLOUR[k.colour]} מהמפעל`, `בקצב של ${Math.round(f.perDay * 7)} בשבוע, נגמר בעוד כ־${f.left} ימים. הרכש לוקח כ־${f.lead} ימים`, '<a class="btn btn--line btn--sm" href="#stock">למלאי</a>'); }
   if (S.coupons) { const pct = yearIncome() / paturCap(); if (pct >= 0.85) add(1, 'money', null, `${Math.round(pct * 100)}% מתקרת עוסק פטור`, `נשארו ${ils(paturCap() - yearIncome())} השנה. לדבר עם רואה החשבון`, '<a class="btn btn--line btn--sm" href="#money">לפרטים</a>'); }
   // all missing receipts in one task: each with "copy to Yesh Invoice" and the receipt number field
   if (receipts.length) add(1, 'receipt', null, receipts.length === 1 ? `להוציא קבלה ${ils(receipts[0].s.amount)}` : `להוציא ${receipts.length} קבלות · ${ils(receipts.reduce((a, x) => a + x.s.amount, 0))}`,
@@ -285,6 +294,14 @@ function tasks() {
 }
 
 // ---------- stock ----------
+// sales pace over the last 30 days (site, bot, partners) > when a colour runs out, and when to order from the factory
+function forecast(k) {
+  const sold = S.orders.filter(o => o.status !== 'cancelled' && o.status !== 'pending' && hours(o.created_at) < 24 * 30).reduce((a, o) => a + (k.colour === 'blue' ? blue(o) : brown(o)), 0);
+  const perDay = sold / 30, lead = +(S.settings.lead_days || 30) || 30;
+  if (!perDay) return { sold, perDay, left: null, orderBy: null, lead };
+  const left = Math.floor(Math.max(k.free, 0) / perDay);
+  return { sold, perDay, left, orderBy: Date.now() + (left - lead) * 864e5, lead };
+}
 function stock() {
   if (!S.inv) return [];
   const held = { blue: 0, brown: 0 };   // sold but not collected yet
@@ -348,7 +365,7 @@ function stageOf(o) {
       at, late: late(at, o.pickup === 'nesziona' ? 72 : 48), step: 2 }; }
   if (o.status === 'ready') { const at = since('ready') || since('dad_ready') || o.created_at;
     return o.pickup === 'courier' ? { who: 'courier', what: 'לבוא לאסוף את הארגז', at, late: late(at, 72), step: 3 }
-      : { who: 'customer', what: `לאסוף מ${PICK[o.pickup] || 'נקודת האיסוף'}`, at, late: late(at, 96), step: 3 }; }
+      : { who: 'customer', what: o.pickup_at ? `לאסוף ${when(o.pickup_at)}` : `לאסוף מ${PICK[o.pickup] || 'נקודת האיסוף'}`, at, late: late(at, 96), step: 3 }; }
   return null;
 }
 const dur = at => { const h = hours(at); return h < 1 ? `${Math.max(1, Math.round(h * 60))} דק׳` : h < 24 ? `${Math.round(h)} שע׳` : `${Math.round(h / 24)} ימים`; };
@@ -661,7 +678,16 @@ function viewMarketing() {
   if (!S.coupons) return top('שיווק') + `<div class="panel empty"><b>הכלים האלה עוד לא מחוברים</b>צריך להריץ פעם אחת את עדכון המסד (sway_v6_admin2.sql).</div>`;
   const ab = abandoned(), lost = unpaidLost();
   let body;
-  if (S.mkt === 'links') {
+  if (S.mkt === 'refs') {
+    const refs = S.coupons.filter(c => c.referrer_phone);
+    const paidUse = c => couponUse(c.code).filter(o => o.order_shares.some(x => x.status === 'confirmed'));
+    body = `<p class="hint">14 יום אחרי איסוף, הבוט שולח לכל לקוח קוד אישי. חבר שקונה איתו מקבל הנחה, והלקוח מקבל ממך אותו סכום בביט.</p>
+      <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>לקוח</th><th>קוד</th><th class="r">חברים שקנו</th><th class="r">מגיע לו</th><th></th></tr></thead><tbody>
+      ${refs.map(c => { const n = paidUse(c).length, owe = Math.max(n - c.rewards_paid, 0), who = c.note?.replace(/^חבר מביא חבר: /, '') || c.referrer_phone;
+        return `<tr><td>${esc(who)}</td><td dir="ltr"><b>${esc(c.code)}</b></td><td class="r num">${n}</td><td class="r num">${owe ? `<b>${ils(owe * c.value)}</b>` : '—'}</td>
+          <td class="acts">${owe ? `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(c.referrer_phone, `היי, תודה שהבאת חבר ל־Sway! העברתי לך ${ils(c.value)} בביט.`)}">${ic('wa', 'ic--sm')}הודעה</a><button class="btn btn--main btn--sm" data-refpaid="${esc(c.code)}">העברתי ${ils(c.value)}</button>` : ''}</td></tr>`; }).join('')
+        || '<tr><td colspan="5" class="empty">עוד אין קודים אישיים. הם נוצרים לבד, 14 יום אחרי שלקוח אוסף.</td></tr>'}</tbody></table></div>`;
+  } else if (S.mkt === 'links') {
     const st = stats('30'), src = new Map((st?.d?.sources || []).map(x => [x.src, x]));
     body = `<form class="panel box cform" data-link-new><h3>קישור חדש עם מעקב</h3>
         <label class="field"><span>למה הקישור</span><input name="label" required maxlength="80" placeholder="סטורי סוכות"></label>
@@ -713,7 +739,7 @@ function viewMarketing() {
       <p class="hint">״להחזיר״ פותח את ההזמנה מחדש כממתינה לתשלום, כשהלקוח אומר שהוא עדיין רוצה.</p>`;
   }
   return top('שיווק', 'קופונים והזמנות שאפשר להציל') +
-    chips('mkt', [['coupons', 'קופונים', S.coupons.filter(c => c.active).length], ['recover', 'להציל הזמנות', ab.length + lost.length + draftsOpen().length], ['links', 'קישורים', S.links.length]], S.mkt) + `<div class="sec">${body}</div>`;
+    chips('mkt', [['coupons', 'קופונים', S.coupons.filter(c => c.active).length], ['recover', 'להציל הזמנות', ab.length + lost.length + draftsOpen().length], ['links', 'קישורים', S.links.length], ['refs', 'חבר מביא חבר', S.coupons.filter(c => c.referrer_phone && couponUse(c.code).filter(o => o.order_shares.some(x => x.status === 'confirmed')).length > c.rewards_paid).length || null]], S.mkt) + `<div class="sec">${body}</div>`;
 }
 
 // ---------- round 4: the site itself (anonymous visit statistics + drafts + links, sway_v11_insights.sql) ----------
@@ -783,7 +809,22 @@ function viewSite() {
     <section class="panel box"><h3>מה עשו באתר</h3>${bars(tools.map(([l, n]) => [l, n, pct(n, N)]), N)}</section>`;
   const list = (title, rows, empty) => `<section class="panel box"><h3>${title}</h3>${rows.length ? `<ol class="toplist">${rows.join('')}</ol>` : `<p class="hint">${empty}</p>`}</section>`;
   const PG = { index: 'דף הבית', balcony: 'דף מרפסת', beach: 'דף חוף', gift: 'דף מתנה', about: 'אודות', care: 'טיפול בערסל', shipping: 'משלוחים ואיסוף', returns: 'החזרות', terms: 'תקנון', order: 'מעקב הזמנה', pay: 'תשלום חבר', review: 'ביקורת', accessibility: 'נגישות' };
-  return head + live + `<div class="sec">${kpis}</div><div class="sec cols2">${funnel}${colours}</div><div class="sec cols2">${time}</div>
+  // the order-button test: visits per wording, and how many of them ordered
+  const AB = { 'cta:A': '״בחרו את שלכם״', 'cta:B': '״להזמנה״' };
+  const abBox = d.ab.length ? `<section class="panel box"><h3>בדיקת A/B: כפתור ההזמנה</h3>${d.ab.map(x => `<div class="abrow"><b>${AB[x.v] || esc(x.v)}</b>
+      <span>${x.n} ביקורים · ${x.co} פתחו הזמנה (${pct(x.co, x.n)}) · ${x.ord} שלחו (${pct(x.ord, x.n)})</span></div>`).join('')}
+    <p class="hint">${(() => { const [a, b] = d.ab; if (!a || !b || a.n + b.n < 400) return `צריך בערך 400 ביקורים כדי לדעת בטוח. יש ${d.ab.reduce((s, x) => s + x.n, 0)}.`;
+      const ra = a.co / a.n, rb = b.co / b.n, w = ra >= rb ? a : b; return `כרגע מוביל ${AB[w.v] || w.v}, ביותר פתיחות הזמנה. אם זה נשאר ככה עוד שבוע, משאירים אותו.`; })()}</p></section>` : '';
+  // ad money over orders that came from Meta (expenses of type "ads" in the same period)
+  const adSpend = S.expenses.filter(x => x.category === 'ads' && Date.parse(x.day + 'T12:00:00') >= statsFrom(p)).reduce((a, x) => a + x.amount, 0);
+  const metaPaid = paidNos(d.sources.filter(x => /^(facebook|instagram|fb|ig|meta)/.test(x.src)).flatMap(x => x.nos));
+  const adBox = `<section class="panel box"><h3>עלות להזמנה ממודעות</h3>${adSpend ? `<div class="pkpis"><div><span>הוצאת מודעות</span><b class="num">${ils(adSpend)}</b></div>
+      <div><span>קנו ממטא</span><b class="num">${metaPaid.length}</b></div><div><span>עלות לקונה</span><b class="num">${metaPaid.length ? ils(adSpend / metaPaid.length) : '—'}</b></div>
+      <div><span>החזר</span><b class="num">${adSpend ? (metaPaid.reduce((a, o) => a + o.amount, 0) / adSpend).toFixed(1) + 'x' : '—'}</b></div></div>`
+    : '<p class="hint">כשיהיו מודעות: רושמים את ההוצאה בכסף > הוצאות (סוג: מודעות), וכאן רואים כמה עלה כל קונה שהגיע מאינסטגרם ופייסבוק.</p>'}</section>`;
+  const errBox = d.errs.length ? `<section class="panel box"><h3>תקלות באתר</h3><ol class="toplist">${d.errs.map(x => `<li><span dir="ltr">${esc(x.e)}</span><b class="num">${x.n}</b></li>`).join('')}</ol>
+    <p class="hint">כשזה חוזר, הבוט שולח לך התראה בוואטסאפ.</p></section>` : '';
+  return head + live + `<div class="sec">${kpis}</div><div class="sec cols2">${funnel}${colours}</div><div class="sec cols2">${abBox}${adBox}${errBox}</div><div class="sec cols2">${time}</div>
     <section class="sec"><h2>מאיפה הגיעו</h2><div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>מקור</th><th class="r">ביקורים</th><th class="r">פתחו הזמנה</th><th class="r">שלחו</th><th class="r">שילמו</th><th class="r">המרה</th></tr></thead><tbody>${srcRows}</tbody></table></div>
       <p class="hint">רוצים לדעת מה הביא כל סטורי או פוסט? בשיווק > קישורים יוצרים קישור נפרד לכל אחד.</p></section>
     <div class="sec cols2">${side}</div>
@@ -804,6 +845,10 @@ function viewStock() {
       <div class="sk__row"><span>שמורים להזמנות פתוחות</span><b class="num">${k.held}</b></div>
       ${incoming(k.colour) ? `<div class="sk__row"><span>בדרך מהמפעל</span><b class="num">${incoming(k.colour)}</b></div>` : ''}
       <div class="sk__row"><span>התראה מתחת ל־</span><b class="num">${k.low_at}</b></div>
+      ${(f => f.perDay ? `<div class="sk__row"><span>קצב מכירה</span><b class="num">${Math.round(f.perDay * 7 * 10) / 10} בשבוע</b></div>
+        <div class="sk__row"><span>ייגמר בעוד</span><b class="num">${f.left} ימים</b></div>
+        <div class="sk__row"><span>להזמין מהמפעל עד</span><b class="num${f.orderBy < Date.now() + 7 * 864e5 ? ' bad' : ''}">${f.orderBy <= Date.now() ? 'עכשיו' : day(f.orderBy)}</b></div>`
+        : '<div class="sk__row"><span>קצב מכירה</span><b>עוד אין מכירות ב־30 יום</b></div>')(forecast(k))}
       <div class="sk__row"><span>באתר</span><b>${S.settings['soldout_' + k.colour] === '1' ? '<span class="pill pill--cancelled">מסומן: אזל</span>' : '<span class="pill pill--ok">למכירה</span>'}</b></div>
       ${S.waitlist.some(w => w.colour === k.colour) ? `<div class="sk__row"><span>מחכים שיחזור</span><b class="num">${S.waitlist.filter(w => w.colour === k.colour).length}</b></div>` : ''}
       <button class="btn btn--line btn--sm" data-soldout="${k.colour}">${S.settings['soldout_' + k.colour] === '1' ? 'חזר למלאי' : 'לסמן: אזל מהמלאי'}</button>
@@ -811,6 +856,7 @@ function viewStock() {
         <input id="n-${k.colour}" name="n" type="number" inputmode="numeric" min="0" max="9999" required placeholder="${k.on_hand}">
         <input class="input" name="reason" maxlength="200" placeholder="סיבה (ספירה, משלוח חדש...)" aria-label="סיבה">
         <button class="btn btn--main">עדכון</button></form></article>`).join('')}</section>
+    <form class="panel box cform sec" data-lead><label class="field"><span>כמה ימים לוקח רכש מהמפעל (לתחזית)</span><input name="lead" type="number" inputmode="numeric" min="1" max="180" value="${esc(S.settings.lead_days || 30)}"></label><button class="btn btn--line btn--sm">שמירה</button></form>
     <section class="sec"><h2>יומן מלאי</h2><div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>מתי</th><th>צבע</th><th class="r">שינוי</th><th class="r">אחרי</th><th>סיבה</th></tr></thead>
       <tbody>${S.log.map(l => `<tr><td class="num">${when(l.at)}</td><td><i class="sw sw--${l.colour}"></i>${COLOUR[l.colour]}</td>
         <td class="r num"><bdi dir="ltr">${l.delta > 0 ? '+' : ''}${l.delta}</bdi></td><td class="r num">${l.on_hand}</td><td>${esc(l.reason || '')}${l.order_no ? ` · <button data-open="${l.order_no}">Sway ${l.order_no}</button>` : ''}</td></tr>`).join('')
@@ -859,7 +905,9 @@ function viewPeople() {
     const msg = c => text.replace(/\{שם\}/g, first(c.name));
     body = `<form class="panel box" data-bc><div class="chips" role="group">${Object.entries(BCAST).map(([k, l]) => `<button type="button" class="chip" data-bcwho="${k}" aria-pressed="${S.bc.who === k}">${l}</button>`).join('')}</div>
         <div class="field" style="margin:12px 0 0"><label for="bct">ההודעה (אפשר {שם} כדי לפנות בשם)</label><textarea id="bct" name="text" maxlength="900" placeholder="היי {שם}, ...">${esc(text)}</textarea></div>
+        <div class="chips" role="group" style="margin-top:8px">${Object.keys(HOLIDAY).map(k => `<button type="button" class="chip" data-bchol="${k}">${k}</button>`).join('')}</div>
         <button class="btn btn--main btn--sm" style="margin-top:8px">עדכון ההודעה</button>
+        ${S.bc.who === 'optin' ? '' : '<p class="hint"><b>שים לב:</b> לפי החוק, הודעת מבצע או פרסום מותר לשלוח רק למי שהסכים. ל״הסכימו לקבל עדכונים״ זה בטוח.</p>'}
         <p class="hint">נשלח מהוואטסאפ שלך, אחד אחרי השני. זה בחינם. שליחה המונית מהבוט דורשת תבנית שיווק מאושרת ועולה כסף ל־Meta.</p></form>
       <div class="panel sec"><div class="tmpl" style="padding:12px 16px 0">${list.length} נמענים · נשלחו ${list.filter(c => S.sent.has(c.phone)).length}
         <button class="btn btn--line btn--sm" data-bccopy>העתקת כל המספרים</button></div>
@@ -931,6 +979,8 @@ function orderDrawer(o) {
         <dt>פריטים</dt><dd>${sw(o)}${items(o)}</dd>
         <dt>סכום</dt><dd class="num">${ils(o.amount)}${o.discount ? ` <small>(הנחה ${ils(o.discount)}${o.coupon ? `, קוד ${esc(o.coupon)}` : ''})</small>` : ''}</dd>
         <dt>איסוף</dt><dd>${['new', 'paid'].includes(o.status) && o.pickup && o.pickup !== 'courier' ? `<select data-pickup="${o.id}" aria-label="נקודת איסוף">${['ashdod', 'nesziona'].map(k => `<option value="${k}"${o.pickup === k ? ' selected' : ''}>${PICK[k]}</option>`).join('')}</select>` : o.pickup ? PICK[o.pickup] : ''}${o.pickup ? '' + (o.pickup === 'nesziona' && ['new', 'paid'].includes(o.status) ? ' · לתאם עם אבא' : '') : esc(`${o.address || ''}, ${o.city || ''}`)}</dd>
+        ${o.pickup === 'ashdod' && ['new', 'paid', 'ready'].includes(o.status) ? `<dt>שעת איסוף</dt><dd>${o.pickup_at ? `<b>${when(o.pickup_at)}</b> (הלקוח בחר)` : 'עוד לא נבחרה'} · <button class="linkish" data-ptlink="${esc(o.token)}">קישור לבחירת שעה</button></dd>` : ''}
+        ${o.marketing_ok ? '<dt>עדכונים</dt><dd>הסכים לקבל עדכונים ומבצעים</dd>' : ''}
         <dt>נפתחה</dt><dd>${when(o.created_at)} · ${o.source === 'whatsapp' ? 'בוט וואטסאפ' : 'אתר'}${o.people > 1 ? ` · קנייה משותפת ל־${o.people}` : ''}</dd></dl>
       ${o.is_gift ? `<div class="note">מתנה ל${esc(o.recipient_name)} · <a class="num" href="tel:${esc(o.recipient_phone)}">${esc(o.recipient_phone)}</a>${o.gift_note ? `<br>פתק: “${esc(o.gift_note)}”` : ''}</div>` : ''}
       ${o.notes ? `<div class="note">הערת הלקוח: ${esc(o.notes)}</div>` : ''}
@@ -1241,6 +1291,12 @@ app.addEventListener('click', async e => {
   if (d.pclose != null) { S.palette = false; return render(true); }
   if (d.mkt) { S.mkt = d.mkt; return render(true); }
   if (d.speriod) { S.speriod = d.speriod; return render(true); }
+  if (d.ptlink) {
+    const url = `${base}pickup.html?o=${d.ptlink}`, ok = await (navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false);
+    return toast(ok ? 'הקישור הועתק. הלקוח בוחר בו שעה, ואתה ואבא מקבלים הודעה' : url, null, !ok);
+  }
+  if (d.bchol) { S.bc.text = HOLIDAY[d.bchol]; return render(true); }
+  if (d.refpaid) { const c = S.coupons.find(x => x.code === d.refpaid); return act(b, async () => must(await sb.from('coupons').update({ rewards_paid: c.rewards_paid + 1 }).eq('code', c.code)), 'נרשם שהעברת'); }
   if (d.lcopy) {
     const l = S.links.find(x => x.slug === d.lcopy), url = `${base}?src=${l.slug}${l.coupon ? '&coupon=' + encodeURIComponent(l.coupon) : ''}`;
     const ok = await (navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false);
@@ -1415,6 +1471,7 @@ app.addEventListener('submit', async e => {
     return act(btn, async () => must(await sb.from('purchases').insert({ supplier: f.supplier.value.trim(), ordered_on: f.ordered.value, eta: f.eta.value || null, qty_blue: +f.blue.value || 0,
       qty_brown: +f.brown.value || 0, unit_cost: f.unit.value === '' ? null : +f.unit.value, extra_cost: +f.extra.value || 0, note: f.note.value.trim() || null })), 'הזמנת הרכש נשמרה');
   }
+  if (d.lead != null) return act(btn, async () => must(await sb.from('settings').upsert({ key: 'lead_days', value: String(Math.max(1, Math.min(180, +f.lead.value || 30))) })), 'נשמר');
   if (d.linkNew != null) {
     const slug = f.slug.value.trim().toLowerCase();
     if (!/^[a-z0-9-]{2,30}$/.test(slug)) return toast('שם באנגלית: אותיות קטנות, ספרות ומקף', null, true);

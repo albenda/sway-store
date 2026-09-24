@@ -464,3 +464,7 @@ details[open].panel summary:before{content:"− "}
 .toplist span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sk .btn{margin-top:10px}
 @media (max-width:900px){.cols2,.cols3{grid-template-columns:1fr}}
+.abrow{display:grid;gap:2px;padding:10px 0;border-top:1px solid var(--rule);font-size:14px}
+.abrow:first-of-type{border-top:0}
+.abrow span{color:var(--muted);font-size:13px}
+.sk__row b.bad{color:var(--coral-ink)}
