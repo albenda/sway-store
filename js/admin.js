@@ -1215,6 +1215,30 @@ async function enter(session) {
 }
 
 let chan, poll, soonT;
+// pull down at the top to refresh: the home-screen app (standalone) has no browser pull-to-refresh of its own.
+// In a normal browser tab the browser's own pull reloads the page, so this stays out of the way there.
+(() => {
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (!standalone || !matchMedia('(pointer: coarse)').matches) return;
+  const ptr = document.createElement('div');
+  ptr.className = 'ptr'; ptr.setAttribute('aria-hidden', 'true'); ptr.innerHTML = '<i></i>';
+  document.body.appendChild(ptr);
+  const PULL = 70;
+  let y0 = null, dy = 0, busy = false;
+  const set = d => { ptr.style.transform = `translateY(${Math.min(d, 110) - 50}px)`; ptr.style.opacity = Math.min(d / PULL, 1); ptr.classList.toggle('is-ready', d >= PULL); };
+  addEventListener('touchstart', e => { y0 = !busy && scrollY <= 0 && S.me && !document.documentElement.classList.contains('lock') ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+  addEventListener('touchmove', e => { if (y0 == null) return; dy = (e.touches[0].clientY - y0) * 0.5; if (dy > 0) set(dy); }, { passive: true });
+  addEventListener('touchend', async () => {
+    if (y0 == null) return;
+    y0 = null;
+    if (dy < PULL) { set(0); return; }
+    busy = true; ptr.classList.add('is-busy'); set(PULL);
+    S.stats = {};                                   // the "אתר" numbers too, not only the orders
+    try { await refresh(true); toast('עודכן'); } catch { toast('אין חיבור, נסה שוב', null, true); }
+    busy = false; ptr.classList.remove('is-busy'); set(0);
+  });
+})();
+
 function startLive() {
   const soon = () => { clearTimeout(soonT); soonT = setTimeout(() => refresh().catch(() => { S.syncFail = true; render(); }), 400); };
   chan?.unsubscribe();
