@@ -105,11 +105,13 @@
 
   // a colour switched to "sold out" on the admin page: no ordering it, leave a phone to hear when it is back
   const out = c => !!(C.soldout && C.soldout[c]);
+  const left = c => (C.stockLeft && C.stockLeft[c] != null ? C.stockLeft[c] : null);   // only when stock is low
   function fixSoldout() {
     for (const c of ['blue', 'brown']) if (out(c) && S[c]) { const o = c === 'blue' ? 'brown' : 'blue'; if (!out(o)) S[o] += S[c]; S[c] = 0; }
     if (!qty() && !out('blue')) S.blue = 1;
     if (!qty() && !out('brown')) S.brown = 1;
     if (out(S.view)) S.view = null;
+    for (const c of ['blue', 'brown']) if (left(c) != null && S[c] > left(c)) S[c] = left(c);
   }
   function notifyBox(c) {
     const done = S.notified && S.notified[c];
@@ -128,8 +130,8 @@
         <output aria-live="polite">${val}</output>
         <button type="button" ${attr}="1" aria-label="${t('co.inc')} ${lab}" ${canInc ? '' : 'disabled'}>${icon('plus', 15)}</button></div>`;
     const rows = ['blue', 'brown'].map(c => out(c) ? `<div class="co-row is-out"><span class="colour-choice"><span class="fabric-chip fabric-${c}" aria-hidden="true"></span>${t('col.' + c)}</span><span class="co-out">${t('co.soldout')}</span></div>${notifyBox(c)}`
-      : `<div class="co-row"><button type="button" class="colour-choice${S[c] ? ' selected' : ''}" data-pick="${c}" aria-pressed="${view() === c}"><span class="fabric-chip fabric-${c}" aria-hidden="true">${icon('check')}</span>${t('col.' + c)}</button>
-        ${stepper(`data-cq-${c}`, S[c], t('col.' + c), S[c] > 0 && qty() > 1, qty() < C.maxQty)}</div>`).join('');
+      : `<div class="co-row"><button type="button" class="colour-choice${S[c] ? ' selected' : ''}" data-pick="${c}" aria-pressed="${view() === c}"><span class="fabric-chip fabric-${c}" aria-hidden="true">${icon('check')}</span>${t('col.' + c)}${left(c) != null ? ` <small class="co-left">${t('co.left', { n: left(c) })}</small>` : ''}</button>
+        ${stepper(`data-cq-${c}`, S[c], t('col.' + c), S[c] > 0 && qty() > 1, qty() < C.maxQty && (left(c) == null || S[c] < left(c)))}</div>`).join('');
     const none = out('blue') && out('brown');
     const one = qty() === 1, two = qty() === 2;
     const deal = qty() <= 2 ? `<div class="co-deal" role="group" aria-label="${t('co.deal')}">

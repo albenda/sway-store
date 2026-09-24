@@ -169,6 +169,7 @@ const DICT = {
     'co.err.phone': 'מספר נייד ישראלי, 10 ספרות שמתחילות ב־05',
     'co.phone.hint': 'אם תצאו לפני הסוף, נשלח תזכורת אחת בוואטסאפ עם קישור להמשך.',
     'co.soldout': 'אזל',
+    'co.left': 'נשארו רק {n}',
     'co.soldout.title': '{c} אזל כרגע.',
     'co.notify.body': 'השאירו מספר ונכתוב לכם בוואטסאפ כשהוא חוזר.',
     'co.notify.btn': 'תודיעו לי',
@@ -520,6 +521,7 @@ const DICT = {
     'co.err.phone': 'An Israeli mobile number, 10 digits starting with 05',
     'co.phone.hint': 'If you leave before the end, we send one WhatsApp reminder with a link to continue.',
     'co.soldout': 'Sold out',
+    'co.left': 'Only {n} left',
     'co.soldout.title': '{c} is sold out right now.',
     'co.notify.body': 'Leave your number and we will message you on WhatsApp when it is back.',
     'co.notify.btn': 'Notify me',
@@ -757,6 +759,8 @@ const I18N = {
       ['08:30-14:30', v.ashdod_hours], ['16:00-20:00', v.nesziona_hours], ['א׳-ה׳', v.ashdod_days]].filter(([a, b]) => b && a !== b));
     Object.assign(C, { price, anchor, pairDiscount: pair, pickupOff: ['ashdod', 'nesziona'].filter(k => v[k + '_on'] === '0'),
       soldout: { blue: v.soldout_blue === '1', brown: v.soldout_brown === '1' },
+      // real stock, only when it runs low (the database sends a number only at or under the alert level)
+      stockLeft: { blue: /^\d+$/.test(v.left_blue ?? '') ? +v.left_blue : null, brown: /^\d+$/.test(v.left_brown ?? '') ? +v.left_brown : null },
       groupDiscount: { perUnit: num('group_discount', C.groupDiscount.perUnit), minQty: num('group_min', C.groupDiscount.minQty) } });
     if (map.size) {
       const re = new RegExp([...map.keys()].map(k => k.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')).join('|'), 'g');

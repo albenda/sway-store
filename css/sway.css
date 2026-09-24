@@ -572,3 +572,4 @@ html[lang=he] [lang=en],html[lang=en] [lang=he]{display:none}
 .pt-slots button[aria-pressed=true]{background:var(--sway-ink);color:#fff;border-color:var(--sway-ink)}
 .pt-slots button:focus-visible{outline:2px solid var(--sway-coral);outline-offset:2px}
 .pt-ok{padding:14px 16px;border-radius:12px;background:rgba(47,122,91,.1);color:#1f5c43;font-weight:600}
+.co-left{margin-inline-start:6px;font:700 12px var(--sway-sans);color:#a3321f;white-space:nowrap}

@@ -838,7 +838,7 @@ function viewStock() {
   if (!S.inv) return top('מלאי') + `<div class="panel empty"><b>המלאי עוד לא מחובר</b>צריך להריץ פעם אחת את עדכון מסד הנתונים (sway_v4_admin.sql).</div>`;
   const ks = stock();
   const incoming = c => S.purchases.filter(p => ['ordered', 'shipped'].includes(p.status)).reduce((a, p) => a + (c === 'blue' ? p.qty_blue : p.qty_brown), 0);
-  return top('מלאי', 'יורד לבד כשמסמנים הזמנה כ״נאסף״, ועולה כשרכש מתקבל') + purchasesBox() +
+  return top('מלאי', 'יורד לבד כשמסמנים ״נאסף״ ועולה כשרכש מתקבל. באתר לא רואים כמויות: רק ״נשארו רק X״ כשהפנויים יורדים לסף ההתראה, ו״אזל״ לבד כשמגיעים ל־0') + purchasesBox() +
     `<section class="sec stock">${ks.map(k => `<article class="panel sk${k.low ? ' sk--low' : ''}">
       <div class="sk__h"><i class="sw sw--${k.colour}"></i>${COLOUR[k.colour]}${k.low ? '<span class="pill pill--cancelled" style="margin-inline-start:auto">נמוך</span>' : ''}</div>
       <div class="sk__big"><b class="num">${k.free}</b><span>פנויים למכירה</span></div>
