@@ -224,6 +224,7 @@ function tasks() {
   const out = [];
   const add = (hot, icon, o, title, sub, act) => out.push({ hot, icon, o, title, sub, act });
   const open = o => `<button class="btn btn--line btn--sm" data-open="${o.order_no}">פרטים</button>`;
+  const receipts = [];
   for (const o of S.orders) {
     if (reported(o)) add(2, 'money', o, `לבדוק ב־PayBox / ביט: ${ils(payLabel(o))}`, `Sway ${o.order_no} · ${esc(o.name)} · דיווח ${ago(o.order_shares.find(s => s.status === 'reported').reported_at || o.created_at)}`,
       `${payBtns(o, 'btn--sm')}${open(o)}`);
@@ -238,9 +239,7 @@ function tasks() {
       `<button class="btn btn--main btn--sm" data-st="${o.id}:collected">השליח לקח</button>`);
     else if (o.status === 'ready') add(0, 'pin', o, `מחכה לאיסוף ב${PICK[o.pickup] || 'נקודת האיסוף'}`, `Sway ${o.order_no} · ${esc(o.name)} · ${esc(o.phone)}`,
       `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.ready(o))}">${ic('wa', 'ic--sm')}תיאום</a><button class="btn btn--main btn--sm" data-st="${o.id}:collected">נאסף</button>`);
-    if (o.status !== 'cancelled') for (const s of o.order_shares) if (s.status === 'confirmed' && !s.receipt_no)
-      add(1, 'receipt', o, `להוציא קבלה ${ils(s.amount)}`, `${ref(o, s)} · ${esc(o.name)} · שולם ${ago(s.confirmed_at || o.created_at)}`,
-        `<button class="btn btn--line btn--sm" data-yesh="${o.id}:${s.id}">${ic('copy', 'ic--sm')}העתקה ליש חשבונית</button><form class="rc" data-rc="${s.id}"><input name="rc" placeholder="מס׳ קבלה" aria-label="מספר קבלה" inputmode="numeric" maxlength="40"><button class="btn btn--line btn--sm">שמירה</button></form>`);
+    if (o.status !== 'cancelled') for (const s of o.order_shares) if (s.status === 'confirmed' && !s.receipt_no && !s.refunded_at) receipts.push({ o, s });
     // dad has not pressed "קיבלתי" 3 hours after the payment: Alon's blind spot when he is abroad
     const paidAt = o.status === 'paid' && (S.events.find(e => e.order_id === o.id && e.kind === 'paid')?.at || o.order_shares.map(x => x.confirmed_at).filter(Boolean).sort().at(-1) || o.created_at);
     if (paidAt && !o.dad_ack_at && hours(paidAt) >= 3 && dadPhone())
@@ -248,6 +247,13 @@ function tasks() {
         `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(dadPhone(), dadText(o))}">${ic('wa', 'ic--sm')}לשלוח לאבא שוב</a>${open(o)}`);
   }
   if (S.coupons) { const pct = yearIncome() / paturCap(); if (pct >= 0.85) add(1, 'money', null, `${Math.round(pct * 100)}% מתקרת עוסק פטור`, `נשארו ${ils(paturCap() - yearIncome())} השנה. לדבר עם רואה החשבון`, '<a class="btn btn--line btn--sm" href="#money">לפרטים</a>'); }
+  // all missing receipts in one task: each with "copy to Yesh Invoice" and the receipt number field
+  if (receipts.length) add(1, 'receipt', null, receipts.length === 1 ? `להוציא קבלה ${ils(receipts[0].s.amount)}` : `להוציא ${receipts.length} קבלות · ${ils(receipts.reduce((a, x) => a + x.s.amount, 0))}`,
+    receipts.length === 1 ? `${ref(receipts[0].o, receipts[0].s)} · ${esc(receipts[0].o.name)}` : 'ללחוץ כדי לפתוח את הרשימה',
+    `<details class="rcpts"${receipts.length <= 2 ? ' open' : ''}><summary>${receipts.length === 1 ? 'להוציא' : 'הרשימה'}</summary>${receipts.map(({ o, s }) => `<div class="rcpt">
+      <span><b>${ref(o, s)}</b> · ${esc(o.name)} · <span class="num">${ils(s.amount)}</span> · ${ago(s.confirmed_at || o.created_at)}</span>
+      <button class="btn btn--line btn--sm" data-yesh="${o.id}:${s.id}">${ic('copy', 'ic--sm')}העתקה ליש חשבונית</button>
+      <form class="rc" data-rc="${s.id}"><input name="rc" placeholder="מס׳ קבלה" aria-label="מספר קבלה" inputmode="numeric" maxlength="40"><button class="btn btn--line btn--sm">שמירה</button></form></div>`).join('')}</details>`);
   for (const r of S.resellers) {
     const od = overdue(r);
     if (od.length) add(1, 'truck', null, `לגבות מ${esc(r.name)}: ${ils(od.reduce((a, x) => a + x.left, 0))}`, `עברו ${od[0].days} ימים מההזמנה הכי ישנה (תנאי תשלום: ${r.terms_days ?? 30} יום)`,
@@ -309,6 +315,55 @@ function top(title, sub = '', search = false) {
 const chips = (attr, list, cur) => `<div class="chips" role="group">${list.map(([k, l, n]) =>
   `<button class="chip" data-${attr}="${k}" aria-pressed="${cur === k}">${l}${n != null ? ` <span class="n num">${n}</span>` : ''}</button>`).join('')}</div>`;
 
+// every open order: what it is waiting for, on whom, since when, and how late that is
+const WHO = { me: 'אתה', customer: 'הלקוח', dad: 'אבא', courier: 'השליח' };
+function stageOf(o) {
+  const since = kind => S.events.filter(e => e.order_id === o.id && e.kind === kind).map(e => e.at).sort().at(-1);
+  const paidAt = () => since('paid') || o.order_shares.map(x => x.confirmed_at).filter(Boolean).sort().at(-1) || o.created_at;
+  const late = (at, h) => hours(at) >= h;
+  if (o.status === 'pending') return { who: 'customer', what: 'לאשר את ההזמנה בוואטסאפ', at: o.created_at, late: late(o.created_at, 1), step: 0 };
+  if (o.status === 'new' && reported(o)) { const at = o.order_shares.map(x => x.reported_at).filter(Boolean).sort().at(-1) || o.created_at;
+    return { who: 'me', what: 'לבדוק ב־PayBox / ביט שהכסף הגיע', at, late: late(at, 3), step: 1 }; }
+  if (o.status === 'new') return { who: 'customer', what: `לשלם ${ils(due(o))}`, at: since('new') || o.created_at, late: late(o.created_at, 24), step: 1 };
+  if (o.status === 'paid' && !o.dad_ack_at) { const at = o.pickup === 'courier' ? o.created_at : paidAt();
+    return { who: 'dad', what: 'לאשר שקיבל את ההזמנה', at, late: late(at, 3), step: 2 }; }
+  if (o.status === 'paid') { const at = o.dad_ack_at;
+    return { who: 'dad', what: o.pickup === 'courier' ? 'לארוז עם הברקוד לשליח' : o.pickup === 'nesziona' ? 'להביא לנס ציונה' : 'להכין לאיסוף באשדוד',
+      at, late: late(at, o.pickup === 'nesziona' ? 72 : 48), step: 2 }; }
+  if (o.status === 'ready') { const at = since('ready') || since('dad_ready') || o.created_at;
+    return o.pickup === 'courier' ? { who: 'courier', what: 'לבוא לאסוף את הארגז', at, late: late(at, 72), step: 3 }
+      : { who: 'customer', what: `לאסוף מ${PICK[o.pickup] || 'נקודת האיסוף'}`, at, late: late(at, 96), step: 3 }; }
+  return null;
+}
+const dur = at => { const h = hours(at); return h < 1 ? `${Math.max(1, Math.round(h * 60))} דק׳` : h < 24 ? `${Math.round(h)} שע׳` : `${Math.round(h / 24)} ימים`; };
+function nextBtn(o, st) {
+  if (st.who === 'me') return payBtns(o, 'btn--sm', true);
+  if (o.status === 'new') return `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.remind(o))}">${ic('wa', 'ic--sm')}תזכורת</a>${payBtns(o, 'btn--sm', true)}`;
+  if (o.status === 'pending') return `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.recover(o))}">${ic('wa', 'ic--sm')}לכתוב ללקוח</a>`;
+  if (st.who === 'dad') return `${dadPhone() ? `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(dadPhone(), dadText(o))}">${ic('wa', 'ic--sm')}לאבא</a>` : ''}<button class="btn btn--main btn--sm" data-st="${o.id}:ready">${o.pickup === 'courier' ? 'ארוז' : 'מוכן'}</button>`;
+  if (o.status === 'ready') return `${o.pickup === 'courier' ? '' : `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.ready(o))}">${ic('wa', 'ic--sm')}תיאום</a>`}<button class="btn btn--main btn--sm" data-st="${o.id}:collected">${o.pickup === 'courier' ? 'נלקח' : 'נאסף'}</button>`;
+  return '';
+}
+function openBox() {
+  const rows = S.orders.filter(o => ['pending', 'new', 'paid', 'ready'].includes(o.status)).map(o => ({ o, st: stageOf(o) })).filter(x => x.st)
+    .sort((a, b) => Date.parse(a.o.created_at) - Date.parse(b.o.created_at));
+  const f = S.who || 'all', list = rows.filter(x => f === 'all' || x.st.who === f || (f === 'customer' && x.st.who === 'courier'));
+  const cnt = k => rows.filter(x => x.st.who === k || (k === 'customer' && x.st.who === 'courier')).length;
+  const steps = ['אישור', 'תשלום', 'הכנה', 'איסוף'];
+  return `<section class="sec"><h2>כל מה שפתוח <span class="count">${rows.length} הזמנות · ${rows.filter(x => x.st.late).length ? `<b style="color:var(--coral-ink)">${rows.filter(x => x.st.late).length} מתעכבות</b>` : 'אין עיכובים'}</span></h2>
+    ${chips('who', [['all', 'הכל', rows.length], ['me', 'מחכים לי', cnt('me')], ['customer', 'מחכים ללקוח', cnt('customer')], ['dad', 'מחכים לאבא', cnt('dad')]], f)}
+    <div class="panel sec open">${list.map(({ o, st }) => `<article class="orow${st.late ? ' is-late' : ''}">
+        <button class="orow__main" data-open="${o.order_no}">
+          <span class="orow__id"><b class="num">Sway ${o.order_no}</b><small>${when(o.created_at)}</small></span>
+          <span class="orow__who"><b>${esc(o.name)}</b>${o.reseller_id ? ' <span class="pill">ספק</span>' : ''}<small>${sw(o)}${items(o)} · <span class="num">${ils(o.amount)}</span>${o.pickup ? ' · ' + PICK[o.pickup] : ''}</small></span>
+          <span class="orow__st"><span class="mini">${steps.map((l, i) => `<i class="${i < st.step ? 'on' : i === st.step ? 'now' : ''}" title="${l}"></i>`).join('')}</span>
+            <span><b class="who who--${st.who}">${WHO[st.who]}</b> ${st.what}</span>
+            <small>${st.late ? '⚠ ' : ''}בשלב הזה ${dur(st.at)} · בטיפול ${dur(o.created_at)}</small></span>
+        </button>
+        <span class="orow__do">${nextBtn(o, st)}</span></article>`).join('')
+      || `<p class="empty">${f === 'all' ? 'אין הזמנות פתוחות.' : 'אין כאן כרגע.'}</p>`}</div></section>`;
+}
+
 function viewToday() {
   const list = tasks();
   const month = payments('month').reduce((a, x) => a + x.s.amount, 0)
@@ -316,13 +371,22 @@ function viewToday() {
   const waiting = S.orders.filter(o => o.status === 'new');
   const free = stock().reduce((a, k) => a + k.free, 0);
   const date = new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
-  const now = list.filter(k => k.hot >= 1), waitingOn = list.filter(k => k.hot < 1);
+  const now = list.filter(k => k.hot >= 1);
+  const open = S.orders.filter(o => ['new', 'paid', 'ready'].includes(o.status)), prep = open.filter(o => o.status === 'paid'), pick = open.filter(o => o.status === 'ready');
+  const rsOwedAll = S.resellers.reduce((a, r) => a + Math.max(0, rsOwed(r)), 0);
   const taskCard = k => `<article class="panel task${k.hot === 2 ? ' task--hot' : ''}">
       <span class="task__ic">${ic(k.icon)}</span><div><h3>${k.title}</h3><p>${k.sub}</p></div><div class="task__do">${k.act}</div></article>`;
   return top('היום', `${date} · ${now.length ? `${now.length} דברים לעשות עכשיו` : 'הכל מטופל'}`) + errBanner() +
+    `<div class="glance">
+      <a href="#orders"><b class="num">${open.length}</b><span>פתוחות</span></a>
+      <a href="#orders"><b class="num">${waiting.length}</b><span>ממתינות לתשלום · ${ils(waiting.reduce((a, o) => a + due(o), 0))}</span></a>
+      <a href="#orders"><b class="num">${prep.length}</b><span>להכין</span></a>
+      <a href="#orders"><b class="num">${pick.length}</b><span>מחכות לאיסוף</span></a>
+      ${rsOwedAll ? `<a href="#partners"><b class="num">${ils(rsOwedAll)}</b><span>ספקים חייבים</span></a>` : ''}
+    </div>` +
     `<section class="sec" aria-label="לעשות עכשיו"><div class="queue">${now.length ? now.map(taskCard).join('')
       : `<div class="panel all-clear"><svg viewBox="0 0 64 24" aria-hidden="true"><use href="#a-mark"/></svg><div><b>אין כלום לטפל בו עכשיו</b><span>הזמנה חדשה או דיווח תשלום יופיעו כאן לבד.</span></div></div>`}</div></section>
-    ${waitingOn.length ? `<section class="sec"><h2>מחכה ללקוחות או לתזכורת <span class="count">${waitingOn.length}</span></h2><div class="queue">${waitingOn.map(taskCard).join('')}</div></section>` : ''}
+    ${openBox()}
     <section class="sec"><h2>המצב</h2><div class="stats">
       <a class="stat" href="#money"><span>הכנסות החודש</span><b class="num">${ils(month)}</b><small>לפי תשלומים שאושרו</small></a>
       <a class="stat${waiting.length ? ' stat--warn' : ''}" href="#orders"><span>ממתין לתשלום</span><b class="num">${ils(waiting.reduce((a, o) => a + due(o), 0))}</b><small>${waiting.length} הזמנות</small></a>
@@ -1069,6 +1133,7 @@ app.addEventListener('click', async e => {
   if (d.refund) { if (!confirm('לסמן שהכסף הוחזר ללקוח? הוא יירד מההכנסות.')) return; return act(b, async () => must(await sb.from('order_shares').update({ refunded_at: new Date().toISOString() }).eq('id', d.refund)), 'נרשם שהכסף הוחזר'); }
   if (d.custFrom) { S.cust = d.custFrom; history.replaceState(null, '', '#' + route().v); return render(true); }
   if (d.stage) { S.stage = d.stage; return render(true); }
+  if (d.who) { S.who = d.who; return render(true); }
   if (d.mnew != null) { S.mnew = !S.mnew; return render(true); }
   if (d.oedit) { S.oedit = S.oedit === +d.oedit ? 0 : +d.oedit; return render(true); }
   if (d.print1) return printLabels([byId(d.print1)]);
