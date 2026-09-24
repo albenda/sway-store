@@ -3,6 +3,7 @@
 // Access is enforced in the database (RLS + public.is_admin()), never by this page. Every status change here
 // reaches the customer on WhatsApp by itself (the sway_status webhook > whatsapp-bot?hook=status).
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
+import { IL_PATH, IL_CITY_XY, CITY_HE, REGION_HE } from './admin-geo.js?v=68';
 
 const C = window.SWAY;
 const RECOVERY = /type=recovery/.test(location.hash);   // arrived from the "choose a password" email
@@ -774,6 +775,21 @@ const bars = (rows, total) => rows.map(([l, n, extra]) => `<div class="bar"><spa
 // countries, from Cloudflare (no IP is kept): flag + Hebrew name, visits, and how many of them ordered
 const regionHe = (() => { try { const dn = new Intl.DisplayNames(['he'], { type: 'region' }); return c => { try { return dn.of(c); } catch { return c; } }; } catch { return c => c; } })();
 const flag = c => /^[A-Z]{2}$/.test(c) ? String.fromCodePoint(...[...c].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65)) : '🌐';
+// Israel, like Google Trends: the land and a dot per city sized by visits; regions and top cities beside it
+const cityHe = c => CITY_HE[c] || c;
+function israelBox(d) {
+  const cities = (d.cities || []).filter(x => IL_CITY_XY[x.c]), regions = d.regions || [];
+  const il = (d.countries || []).find(x => x.c === 'IL')?.n || 0;
+  if (!cities.length && !regions.length) return `<section class="panel box"><h3>מאיפה בארץ</h3><p class="hint">נאסף מעכשיו, מכל מי שנכנס מישראל.</p></section>`;
+  const mx = Math.max(...cities.map(x => x.n), 1);
+  const dots = [...cities].sort((a, b) => b.n - a.n).map(x => { const [cx, cy] = IL_CITY_XY[x.c], r = (2.5 + 9 * Math.sqrt(x.n / mx)).toFixed(1);
+    return `<circle cx="${cx}" cy="${cy}" r="${r}"><title>${esc(cityHe(x.c))}: ${x.n} ביקורים${x.ord ? `, ${x.ord} הזמינו` : ''}</title></circle>`; }).join('');
+  return `<section class="panel box ilmap"><h3>מאיפה בארץ</h3><div class="ilmap__in">
+      <svg viewBox="-8 -8 167 416" role="img" aria-label="מפת הביקורים בישראל"><path d="${IL_PATH}"/>${dots}</svg>
+      <div>${bars(cities.slice(0, 10).map(x => [esc(cityHe(x.c)), x.n, x.ord ? `${x.ord} הזמינו` : '']), cities[0]?.n)}
+        <h3 style="margin-top:14px">לפי אזור</h3>${bars(regions.map(x => [esc(REGION_HE[x.r] || x.r), x.n, pct(x.n, il || x.n)]), regions[0]?.n)}</div></div>
+    <p class="hint">משוער, לפי כתובת ה־IP (שלא נשמרת). בטלפונים העיר היא לפעמים של חברת הסלולר. <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a></p></section>`;
+}
 function countryBox(d, N) {
   const rows = (d.countries || []).filter(x => x.c !== '?');
   return `<section class="panel box"><h3>מאיזו מדינה</h3>${rows.length ? bars(rows.map(x => [`${flag(x.c)} ${esc(regionHe(x.c))}`, x.n, `${pct(x.n, N)}${x.ord ? ` · ${x.ord} הזמינו` : ''}`]), N)
@@ -838,6 +854,7 @@ function viewSite() {
   return head + live + `<div class="sec">${kpis}</div><div class="sec cols2">${funnel}${colours}</div><div class="sec cols2">${abBox}${adBox}${errBox}</div><div class="sec cols2">${time}</div>
     <section class="sec"><h2>מאיפה הגיעו</h2><div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>מקור</th><th class="r">ביקורים</th><th class="r">פתחו הזמנה</th><th class="r">שלחו</th><th class="r">שילמו</th><th class="r">המרה</th></tr></thead><tbody>${srcRows}</tbody></table></div>
       <p class="hint">רוצים לדעת מה הביא כל סטורי או פוסט? בשיווק > קישורים יוצרים קישור נפרד לכל אחד.</p></section>
+    <section class="sec">${israelBox(d)}</section>
     <section class="sec cols2">${countryBox(d, N)}<section class="panel box"><h3>הביקורים שלך</h3>
       <p class="hint">הדפדפן הזה לא נספר בסטטיסטיקה, כי נכנסת ממנו לדף הניהול. כדי שגם הטלפון לא ייספר, פותחים בו פעם אחת:</p>
       <p dir="ltr"><b>swayil.co.il/?me=1</b> <button class="btn btn--line btn--sm" data-mecopy>העתקה</button></p></section></section>

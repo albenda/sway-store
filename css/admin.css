@@ -474,3 +474,9 @@ details[open].panel summary:before{content:"− "}
 .ptr.is-ready i{transform:rotate(180deg);border-color:var(--coral-ink);border-top-color:transparent}
 .ptr.is-busy i{animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* visitors map (Israel) */
+.ilmap__in{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:22px;align-items:start}
+.ilmap svg{width:100%;height:auto;max-height:440px}
+.ilmap path{fill:var(--rule);stroke:none}
+.ilmap circle{fill:var(--coral);fill-opacity:.55;stroke:var(--coral-ink);stroke-width:.8}
+@media (max-width:600px){.ilmap__in{grid-template-columns:110px 1fr;gap:14px}}
