@@ -770,6 +770,15 @@ const stats = p => { const x = S.stats[p]; if (!x || Date.now() - x.at > 60000) 
 const pct = (a, b) => (b ? Math.round(a / b * 100) : 0) + '%';
 const bars = (rows, total) => rows.map(([l, n, extra]) => `<div class="bar"><span>${l}</span><i><s style="width:${Math.round(n / (total || 1) * 100)}%"></s></i><b class="num">${n}${extra ? ` <small>${extra}</small>` : ''}</b></div>`).join('');
 
+// countries, from Cloudflare (no IP is kept): flag + Hebrew name, visits, and how many of them ordered
+const regionHe = (() => { try { const dn = new Intl.DisplayNames(['he'], { type: 'region' }); return c => { try { return dn.of(c); } catch { return c; } }; } catch { return c => c; } })();
+const flag = c => /^[A-Z]{2}$/.test(c) ? String.fromCodePoint(...[...c].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65)) : '🌐';
+function countryBox(d, N) {
+  const rows = (d.countries || []).filter(x => x.c !== '?');
+  return `<section class="panel box"><h3>מאיזו מדינה</h3>${rows.length ? bars(rows.map(x => [`${flag(x.c)} ${esc(regionHe(x.c))}`, x.n, `${pct(x.n, N)}${x.ord ? ` · ${x.ord} הזמינו` : ''}`]), N)
+    : '<p class="hint">נאסף מעכשיו. ביקורים מלפני היום בלי מדינה.</p>'}</section>`;
+}
+
 function viewSite() {
   const p = S.speriod, st = stats(p), d = st?.d;
   const head = top('האתר', 'מי נכנס, מאיפה הגיע ומה עשה. אנונימי, בלי עוגיות') + chips('speriod', Object.entries(SP), p);
@@ -828,6 +837,9 @@ function viewSite() {
   return head + live + `<div class="sec">${kpis}</div><div class="sec cols2">${funnel}${colours}</div><div class="sec cols2">${abBox}${adBox}${errBox}</div><div class="sec cols2">${time}</div>
     <section class="sec"><h2>מאיפה הגיעו</h2><div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>מקור</th><th class="r">ביקורים</th><th class="r">פתחו הזמנה</th><th class="r">שלחו</th><th class="r">שילמו</th><th class="r">המרה</th></tr></thead><tbody>${srcRows}</tbody></table></div>
       <p class="hint">רוצים לדעת מה הביא כל סטורי או פוסט? בשיווק > קישורים יוצרים קישור נפרד לכל אחד.</p></section>
+    <section class="sec cols2">${countryBox(d, N)}<section class="panel box"><h3>הביקורים שלך</h3>
+      <p class="hint">הדפדפן הזה לא נספר בסטטיסטיקה, כי נכנסת ממנו לדף הניהול. כדי שגם הטלפון לא ייספר, פותחים בו פעם אחת:</p>
+      <p dir="ltr"><b>swayil.co.il/?me=1</b> <button class="btn btn--line btn--sm" data-mecopy>העתקה</button></p></section></section>
     <div class="sec cols2">${side}</div>
     <div class="sec cols3">${list('הדפים הנצפים', d.pages.map(x => `<li><span>${esc(PG[x.p] || x.p)}</span><b class="num">${x.n}</b></li>`), 'אין עדיין.')}
       ${list('שאלות שפתחו הכי הרבה', d.faq.map(x => `<li><span>${esc(x.q)}</span><b class="num">${x.n}</b></li>`), 'עוד אף אחד לא פתח שאלה.')}
@@ -1197,6 +1209,7 @@ async function enter(session) {
   if (error) { app.innerHTML = `<div class="gate"><div class="gate__box">${MARK}<h1>אין חיבור</h1><p>${esc(error.message)}</p><button class="btn btn--main" onclick="location.reload()">לנסות שוב</button></div></div>`; return; }
   if (!ok) { await sb.auth.signOut({ scope: 'local' }); return gate('login', 'למשתמש הזה אין הרשאת ניהול.'); }
   S.me = session.user.email;
+  try { localStorage.setItem('sway-me', '1'); } catch {}   // this browser is the owner's: the site's statistics skip it (track.js)
   if (/access_token/.test(location.hash)) history.replaceState(null, '', location.pathname + '#today');
   try { await refresh(true); startLive(); } catch (err) { app.innerHTML = `<div class="gate"><div class="gate__box">${MARK}<h1>לא הצלחתי לטעון</h1><p>${esc(err.message)}</p><button class="btn btn--main" onclick="location.reload()">לנסות שוב</button></div></div>`; }
 }
@@ -1296,6 +1309,7 @@ app.addEventListener('click', async e => {
   if (d.pclose != null) { S.palette = false; return render(true); }
   if (d.mkt) { S.mkt = d.mkt; return render(true); }
   if (d.speriod) { S.speriod = d.speriod; return render(true); }
+  if (d.mecopy != null) { const ok = await (navigator.clipboard?.writeText('https://swayil.co.il/?me=1').then(() => true, () => false) ?? false); return toast(ok ? 'הועתק. לפתוח את הקישור בטלפון פעם אחת' : 'swayil.co.il/?me=1', null, !ok); }
   if (d.ptlink) {
     const url = `${base}pickup.html?o=${d.ptlink}`, ok = await (navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false);
     return toast(ok ? 'הקישור הועתק. הלקוח בוחר בו שעה, ואתה ואבא מקבלים הודעה' : url, null, !ok);

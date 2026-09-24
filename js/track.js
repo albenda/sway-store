@@ -6,6 +6,12 @@
   if (!C.supabaseUrl || /^(localhost|127\.)/.test(location.hostname) || document.body.dataset.page === 'admin') return;
   const ss = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { return null; } };
   const q = new URLSearchParams(location.search);
+  // the owner's own browsers are not counted: any browser that opened the admin page, or visited ?me=1 once (?me=0 undoes it)
+  try {
+    if (q.get('me') === '1') localStorage.setItem('sway-me', '1');
+    if (q.get('me') === '0') localStorage.removeItem('sway-me');
+    if (localStorage.getItem('sway-me') === '1') return;
+  } catch {}
 
   let sid = ss('sway-sid');
   if (!sid) { sid = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => (b % 36).toString(36)).join(''); ss('sway-sid', sid); }

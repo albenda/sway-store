@@ -3,6 +3,7 @@
 (() => {
   const C = window.SWAY || {};
   if (!C.ga4 && !C.pixel) return;
+  try { if (localStorage.getItem('sway-me') === '1' || /[?&]me=1/.test(location.search)) return; } catch (e) {}   // the owner's own visits
   const t = k => (typeof I18N !== 'undefined' ? I18N.t(k) : k);
   let choice = null;
   try { choice = localStorage.getItem('sway-consent'); } catch (e) {}
