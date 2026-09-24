@@ -13,7 +13,7 @@ window.SWAY = {
   groupDiscount: { perUnit: 20, minQty: 3 },
   pairDiscount: 50,          // per 2 hammocks: a pair costs ₪850
   ga4: '',     // Google Analytics 4 measurement ID, e.g. 'G-XXXXXXX' (empty = off)
-  pixel: '',   // Meta Pixel ID (empty = off)
+  pixel: '1125181910079924', // Meta Pixel ID (empty = off)
   adminUsers: { alon: 'alonabd23@gmail.com' },  // admin.html username > sign-in email (access is still is_admin() in the DB)
   maxQty: 10,
   maxGroup: 8,
