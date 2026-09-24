@@ -65,9 +65,10 @@ const ref = (o, s) => `Sway ${o.order_no}${o.people > 1 ? '-' + s.n : ''}`;
 const T = {
   pay: o => `היי ${first(o.name)}, תודה על ההזמנה Sway ${o.order_no}.\nלתשלום: ${ils(due(o) || o.amount)} ב־PayBox או בביט, למספר ${C.bitPhone}.\nבהערה לכתוב: Sway ${o.order_no}`,
   remind: o => `היי ${first(o.name)}, ההזמנה Sway ${o.order_no} עדיין מחכה לתשלום (${ils(due(o))} ב־PayBox או בביט, למספר ${C.bitPhone}). יש שאלה? אני כאן.`,
+  // the exact address goes only to customers who paid (this button shows on paid / ready orders)
   ready: o => o.pickup === 'nesziona'
-    ? `היי ${first(o.name)}, הערסל מחכה לך בנס ציונה. מתי נוח לך לאסוף?`
-    : `היי ${first(o.name)}, הערסל מוכן לאיסוף באשדוד, ${S.settings.ashdod_address || 'רחוב המתכת 21'} (${S.settings.ashdod_days || 'א׳-ה׳'}, ${S.settings.ashdod_hours || '08:30-14:30'}). אפשר לבחור שעה כאן: ${base}pickup.html?o=${o.token}`,
+    ? `היי ${first(o.name)}, הערסל מחכה לך בנס ציונה, ${S.settings.nesziona_address || 'נורדאו 28'} (${S.settings.ashdod_days || 'א׳-ה׳'}, ${S.settings.nesziona_hours || '16:00-20:00'}). אפשר לבחור שעה כאן: ${base}pickup.html?o=${o.token}`
+    : `היי ${first(o.name)}, הערסל מוכן לאיסוף באשדוד, ${S.settings.ashdod_place ? S.settings.ashdod_place + ', ' : ''}${S.settings.ashdod_address || 'רחוב המתכת 21'} (${S.settings.ashdod_days || 'א׳-ה׳'}, ${S.settings.ashdod_hours || '08:30-14:30'}). אפשר לבחור שעה כאן: ${base}pickup.html?o=${o.token}`,
   review: o => `היי ${first(o.name)}, מקווים שאתם נהנים מהערסל. נשמח לביקורת קצרה, עם תמונה אם בא לכם: ${base}review.html?o=${o.token}`,
   draft: d => `היי ${first(d.name)}, ראיתי שהתחלת להזמין ערסל Sway ולא סיימת. אפשר להמשיך בדיוק מאיפה שעצרת: ${base}?d=${d.token}\nיש שאלה? אני כאן.`
 };
@@ -234,7 +235,7 @@ const statement = r => { const un = unpaidOrders(r), units = rsOrders(r).reduce(
   return `היי ${first(r.contact_name || r.name)}, סיכום חשבון Sway נכון ל־${new Date().toLocaleDateString('he-IL')}:\n`
     + `הזמנות: ${rsOrders(r).length} (${units} ערסלים) · ${ils(rsOrders(r).reduce((a, o) => a + o.amount, 0))}\nשולם: ${ils(rsPaid(r))}\nיתרה לתשלום: ${ils(Math.max(0, rsOwed(r)))}`
     + (un.length ? `\n\nפתוחות:\n${un.map(x => `Sway ${x.o.order_no} · ${day(x.o.created_at)} · ${ils(x.left)}`).join('\n')}` : '') + '\n\nתודה!'; };
-const dadText = o => `הזמנה Sway ${o.order_no} שולמה. להכין:\n${items(o)}\n${o.pickup === 'nesziona' ? 'להביא לנס ציונה (תוך 2-3 ימים)' : 'איסוף מאשדוד, הלקוח יתאם שעה'}\nלקוח: ${o.name}, ${o.phone}`;
+const dadText = o => `הזמנה Sway ${o.order_no} שולמה. להכין:\n${items(o)}\n${o.pickup === 'nesziona' ? 'להביא הביתה לנס ציונה, הלקוח בוחר שעה' : 'איסוף מהמפעל באשדוד, הלקוח בוחר שעה'}\nלקוח: ${o.name}, ${o.phone}`;
 T.recover = o => `היי ${first(o.name)}, ראיתי שהתחלת הזמנה של ערסל Sway (${items(o)}) ולא הספקת לאשר אותה. רוצה שאשמור לך אותה? מספיק לענות כאן.`;
 T.unpaid = o => `היי ${first(o.name)}, ההזמנה Sway ${o.order_no} בוטלה כי לא הגיע תשלום. אם עדיין בא לך את הערסל, אני יכול לפתוח אותה מחדש.`;
 
@@ -252,7 +253,7 @@ function tasks() {
     if (o.status === 'paid' && o.pickup === 'courier') add(1, 'orders', o, `להכין למשלוח של ${esc(o.name)}`, `Sway ${o.order_no} · ${sw(o)}${items(o)} · ברקוד לשליח`,
       `<button class="btn btn--main btn--sm" data-st="${o.id}:ready">ארוז, מחכה לשליח</button>${open(o)}`);
     else if (o.status === 'paid') add(1, 'orders', o, o.pickup === 'nesziona' ? 'להביא לנס ציונה' : 'להכין לאיסוף באשדוד',
-      `Sway ${o.order_no} · ${esc(o.name)} · ${sw(o)}${items(o)}${o.pickup === 'nesziona' ? ' · לתאם עם אבא, 2-3 ימים' : ''}`,
+      `Sway ${o.order_no} · ${esc(o.name)} · ${sw(o)}${items(o)}${o.pickup === 'nesziona' ? ' · אבא מביא הביתה' : ''}`,
       `<button class="btn btn--main btn--sm" data-st="${o.id}:ready">מוכן לאיסוף</button>${open(o)}`);
     if (o.status === 'ready' && o.pickup === 'courier') add(0, 'pin', o, `מחכה לשליח: ${esc(o.name)}`, `Sway ${o.order_no} · ${items(o)}`,
       `<button class="btn btn--main btn--sm" data-st="${o.id}:collected">השליח לקח</button>`);
@@ -1023,11 +1024,15 @@ const acctDrawer = () => `<div class="scrim" data-close></div><aside class="draw
       <p class="hint" style="grid-column:1/-1">זוג יעלה ${ils(2 * (+S.settings.price || C.price) - (+S.settings.pair_discount || 0))}. הזמנות קיימות נשארות במחיר שבו נפתחו.</p>
       <h3 style="grid-column:1/-1;margin-top:8px">איסוף</h3>
       <label class="check"><input type="checkbox" name="ashdod_on"${S.settings.ashdod_on === '0' ? '' : ' checked'}>איסוף מאשדוד פעיל</label>
+      <p class="hint" style="grid-column:1/-1">הכתובות לא מופיעות באתר. הבוט שולח אותן ללקוח רק אחרי תשלום.</p>
+      <label class="field"><span>שם המקום באשדוד</span><input name="ashdod_place" maxlength="80" value="${esc(S.settings.ashdod_place || '')}"></label>
       <label class="field"><span>כתובת באשדוד</span><input name="ashdod_address" maxlength="80" value="${esc(S.settings.ashdod_address || '')}"></label>
       <label class="field"><span>ימים</span><input name="ashdod_days" maxlength="30" value="${esc(S.settings.ashdod_days || '')}"></label>
       <label class="field"><span>שעות</span><input name="ashdod_hours" maxlength="30" dir="ltr" value="${esc(S.settings.ashdod_hours || '')}"></label>
       <label class="check"><input type="checkbox" name="nesziona_on"${S.settings.nesziona_on === '0' ? '' : ' checked'}>איסוף מנס ציונה פעיל</label>
-      <label class="field"><span>נס ציונה: תוך כמה ימים</span><input name="nesziona_days" maxlength="10" dir="ltr" value="${esc(S.settings.nesziona_days || '')}"></label>
+      <label class="field"><span>כתובת בנס ציונה</span><input name="nesziona_address" maxlength="80" value="${esc(S.settings.nesziona_address || '')}"></label>
+      <label class="field"><span>שעות בנס ציונה</span><input name="nesziona_hours" maxlength="30" dir="ltr" value="${esc(S.settings.nesziona_hours || '')}"></label>
+      <label class="field"><span>נס ציונה: כמה ימים אחרי התשלום</span><input name="nesziona_days" maxlength="10" dir="ltr" value="${esc(S.settings.nesziona_days || '')}"></label>
       <button class="btn btn--main">שמירה</button></form>
     <form class="panel box" data-pw><h3>החלפת סיסמה</h3>${pwFields()}<button class="btn btn--main">שמירת סיסמה</button><p class="msg" role="status"></p></form></div>
   <footer class="drawer__foot"><button class="btn btn--bad" data-logout>יציאה</button></footer></aside>`;
@@ -1529,7 +1534,7 @@ app.addEventListener('submit', async e => {
   if (d.shop != null) {
     if (!f.ashdod_on.checked && !f.nesziona_on.checked) return toast('צריך לפחות נקודת איסוף אחת פעילה', null, true);
     if (+f.price.value < 1) return toast('מחיר לא תקין', null, true);
-    const rows = ['price', 'anchor', 'pair_discount', 'group_discount', 'group_min', 'ashdod_address', 'ashdod_days', 'ashdod_hours', 'nesziona_days']
+    const rows = ['price', 'anchor', 'pair_discount', 'group_discount', 'group_min', 'ashdod_place', 'ashdod_address', 'ashdod_days', 'ashdod_hours', 'nesziona_address', 'nesziona_hours', 'nesziona_days']
       .map(k => ({ key: k, value: f[k].value.trim() })).filter(x => x.value !== '')
       .concat([{ key: 'ashdod_on', value: f.ashdod_on.checked ? '1' : '0' }, { key: 'nesziona_on', value: f.nesziona_on.checked ? '1' : '0' }]);
     return act(btn, async () => must(await sb.from('settings').upsert(rows)), 'נשמר. האתר והבוט מתעדכנים מיד');

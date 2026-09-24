@@ -8,7 +8,7 @@ window.SWAY = {
   // private Supabase: organization "Sway", project "sway" (not the Cynect work account)
   supabaseUrl: 'https://flrgoetjaeabbesrmodx.supabase.co',
   supabaseKey: 'sb_publishable_JcSDZWOYYAasddb5LtLdAw_r7VZmaIu', // publishable, client-safe
-  // self pickup only for now (Ashdod, HaMatechet 21 / Nes Ziona, 2-3 days). Home delivery returns later:
+  // self pickup only for now (Ashdod / Nes Ziona; exact addresses only after payment, from the bot). Home delivery returns later:
   // js/cities.js + tools/shipping_seed.py + shipping_zones are kept for that.
   groupDiscount: { perUnit: 20, minQty: 3 },
   pairDiscount: 50,          // per 2 hammocks: a pair costs ₪850

@@ -161,7 +161,7 @@
     return `<label class="field" data-field="${name}"><span>${t(label)}</span>${hint ? `<small>${hint}</small>` : ''}${tag}<p class="co-err" data-err="${name}"></p></label>`;
   }
 
-  // Ashdod (by appointment) or Nes Ziona (the owner's father brings it over: 2-3 days)
+  // Ashdod (the factory, same day) or Nes Ziona (dad's home, from the day after payment); addresses only after payment
   function pickupChoice() {
     const on = ['ashdod', 'nesziona'].filter(k => !(C.pickupOff || []).includes(k));
     if (on.length && !on.includes(S.f.pickup)) S.f.pickup = on[0];   // a point switched off on the admin page
@@ -463,8 +463,9 @@
       <ul class="shares">${rows}</ul>`;
   }
 
-  /* ================= pickup.html (choose a pickup time, Ashdod) ================= */
-  // opening days and hours come from the admin page ("א׳-ה׳", "08:30-14:30"); slots every 30 minutes, from an hour ahead
+  /* ================= pickup.html (choose a pickup time, Ashdod or Nes Ziona) ================= */
+  // days and hours come from the admin page ("א׳-ה׳", "08:30-14:30"); slots every 30 minutes, from an hour ahead.
+  // The exact address shows only once the order is paid (get_pickup leaves it out before that).
   const TZ = 'Asia/Jerusalem';
   function openDays(txt) {
     const L = 'אבגדהוש', out = new Set();
@@ -493,12 +494,13 @@
     let d;
     try { d = await api('get_pickup', { p_token: token }); } catch (e) { app.innerHTML = `<h1>${t('pt.title')}</h1><p>${t('pay.notfound')}</p>`; return; }
     const head = `<p class="kicker">${t('pt.title')}</p><h1>${t('pt.hello', { name: esc(d.name || '') })}</h1>`;
-    if (d.pickup === 'nesziona') { app.innerHTML = head + `<p>${t('pt.nz')}</p>`; return; }
+    const city = t(d.pickup === 'nesziona' ? 'pt.nz' : 'pk.ashdod');
+    const place = d.address ? `${city}, ${d.place ? esc(d.place) + ', ' : ''}${esc(d.address)}` : `${city}. ${t('pt.later')}`;
     if (!['new', 'paid', 'ready'].includes(d.status)) { app.innerHTML = head + `<p>${t('pt.closed')}</p>`; return; }
     const days = openDays(d.days), hm = String(d.hours || '').match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/) || [0, 8, 30, 14, 30];
     const [from, to] = [+hm[1] * 60 + +hm[2], +hm[3] * 60 + +hm[4]];
     const groups = [];
-    for (let i = 0; i < 21 && groups.length < 6; i++) {
+    for (let i = +d.lead || 0; i < 21 && groups.length < 6; i++) {   // Nes Ziona: from the day after payment
       const [y, mo, dd] = new Date(Date.now() + i * 864e5).toLocaleDateString('sv-SE', { timeZone: TZ }).split('-').map(Number);
       const noon = ilTime(y, mo, dd, 12, 0);
       if (!days.has(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(noon.toLocaleDateString('en-US', { timeZone: TZ, weekday: 'short' })))) continue;
@@ -508,7 +510,7 @@
     }
     const cur = d.pickup_at ? new Date(d.pickup_at) : null;
     const draw = (msg = '') => {
-      app.innerHTML = head + `<p>${t('pt.where', { address: esc(d.address || 'רחוב המתכת 21'), no: esc(d.order_no) })}</p>
+      app.innerHTML = head + `<p>${t('pt.where', { place, no: esc(d.order_no) })}</p>
         ${msg}${cur && !msg ? `<p class="pt-ok">${t('pt.chosen', { when: whenTxt(cur) })}</p><p>${t('pt.change')}</p>` : ''}
         ${groups.length ? groups.map(g => `<p class="pt-day">${g.label}</p><div class="pt-slots" role="group" aria-label="${g.label}">${g.slots.map(s =>
           `<button type="button" data-at="${s.toISOString()}" aria-pressed="${!!cur && +cur === +s}">${fmt(s, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}</button>`).join('')}</div>`).join('')

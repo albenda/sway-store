@@ -117,7 +117,7 @@ const DICT = {
     'faq.q6': 'איך עובדת קנייה חברית?',
     'faq.a6': 'בוחרים כמה משתתפים. כל אחד מקבל קישור אישי עם החלק שלו ומשלם בעצמו. כולם רואים מי כבר שילם, וכשכולם שילמו ההזמנה מוכנה לאיסוף.',
     'faq.q7': 'איך מקבלים את הערסל?',
-    'faq.a7': 'כרגע באיסוף עצמי, בלי עלות. מאשדוד, רחוב המתכת 21, בשעה שנתאם בוואטסאפ. או מנס ציונה: הערסל מחכה שם תוך 2-3 ימים מהתשלום, ונודיע לכם כשהוא מוכן. משלוח עד הבית יחזור בהמשך.',
+    'faq.a7': 'כרגע באיסוף עצמי, בלי עלות. מאשדוד, א׳-ה׳ 08:30-14:30, אפשר כבר באותו יום. או מנס ציונה, א׳-ה׳ 16:00-20:00, מהיום שאחרי התשלום. את הכתובת המדויקת נשלח בוואטסאפ אחרי התשלום, יחד עם קישור לבחירת שעה. משלוח עד הבית יחזור בהמשך.',
     'faq.q8': 'ואם לא התאהבתי?',
     'faq.a8': 'יש 30 יום להחזרה עם החזר כספי מלא. זכות הביטול לפי חוק הגנת הצרכן שמורה לכם תמיד.',
 
@@ -177,11 +177,11 @@ const DICT = {
     'co.optin': 'אשמח לקבל בוואטסאפ עדכונים ומבצעים, לא יותר מפעם בחודש.',
     'pt.title': 'בחירת שעה לאיסוף',
     'pt.hello': 'היי {name}, מתי נוח לכם לאסוף?',
-    'pt.where': 'אשדוד, {address}. הזמנה Sway {no}.',
+    'pt.where': '{place}. הזמנה Sway {no}.',
     'pt.chosen': 'נתראה {when}.',
     'pt.change': 'רוצים לשנות? בחרו שעה אחרת.',
     'pt.saved': 'נשמר. נתראה {when}, ונעדכן אם משהו משתנה.',
-    'pt.nz': 'האיסוף שלכם הוא מנס ציונה. נתאם איתכם את השעה בוואטסאפ.',
+    'pt.nz': 'נס ציונה',
     'pt.closed': 'ההזמנה הזו כבר לא פתוחה לאיסוף.',
     'pt.err': 'לא הצלחנו לשמור. נסו שעה אחרת.',
     'pt.none': 'אין כרגע שעות פנויות. כתבו לנו בוואטסאפ ונתאם.',
@@ -345,12 +345,13 @@ const DICT = {
     'co.pickup': 'איפה אוספים?',
     'co.pickup.row': 'איסוף עצמי',
     'co.free': 'חינם',
-    'pk.ashdod': 'אשדוד, רחוב המתכת 21',
-    'pk.ashdod.note': 'א׳-ה׳, 08:30-14:30, בשעה שנתאם בוואטסאפ.',
-    'pk.ashdod.after': 'נכתוב לכם בוואטסאפ כדי לתאם שעת איסוף (א׳-ה׳, 08:30-14:30).',
+    'pk.ashdod': 'אשדוד',
+    'pk.ashdod.note': 'א׳-ה׳, 08:30-14:30. אפשר כבר באותו יום.',
+    'pk.ashdod.after': 'אחרי שהתשלום מאושר, נשלח לכם בוואטסאפ את הכתובת המדויקת וקישור לבחירת שעה.',
     'pk.nesziona': 'נס ציונה',
-    'pk.nesziona.note': 'הערסל מחכה שם תוך 2-3 ימים מהתשלום. נודיע לכם כשהוא מוכן.',
-    'pk.nesziona.after': 'הערסל יחכה לכם שם תוך 2-3 ימים מהתשלום. נכתוב לכם בוואטסאפ כשהוא מוכן.'
+    'pk.nesziona.note': 'א׳-ה׳, 16:00-20:00, מהיום שאחרי התשלום.',
+    'pk.nesziona.after': 'אחרי שהתשלום מאושר, נשלח לכם בוואטסאפ את הכתובת המדויקת וקישור לבחירת שעה.',
+    'pt.later': 'את הכתובת המדויקת נשלח אחרי שהתשלום יאושר.'
   },  en: {
     'meta.title': 'Sway. | Calm that goes with you.',
     'meta.desc': 'A hammock with its own stand. 3 m open, 8 kg in one bag, two minutes to set up. No trees, no drilling. ₪450 instead of ₪700.',
@@ -467,7 +468,7 @@ const DICT = {
     'faq.q6': 'How does buying with friends work?',
     'faq.a6': 'Choose how many people are in. Each gets a personal link with their share and pays on their own. Everyone sees who has paid, and once all have paid the order is ready for pickup.',
     'faq.q7': 'How do I get the hammock?',
-    'faq.a7': 'For now it is self pickup, at no cost. In Ashdod, 21 HaMatechet St, at a time we agree on WhatsApp. Or in Nes Ziona: the hammock is there within 2-3 days of your order, and we let you know when it is ready. Home delivery will return later.',
+    'faq.a7': 'For now it is self pickup, at no cost. In Ashdod, Sun-Thu 08:30-14:30, even the same day. Or in Nes Ziona, Sun-Thu 16:00-20:00, from the day after payment. We send the exact address on WhatsApp once you pay, with a link to choose a time. Home delivery will return later.',
     'faq.q8': 'What if I do not love it?',
     'faq.a8': 'You have 30 days to return it for a full refund. Your cancellation rights under Israeli consumer protection law always apply.',
 
@@ -527,11 +528,11 @@ const DICT = {
     'co.optin': 'Send me updates and offers on WhatsApp, at most once a month.',
     'pt.title': 'Choose a pickup time',
     'pt.hello': 'Hi {name}, when suits you to pick it up?',
-    'pt.where': 'Ashdod, {address}. Order Sway {no}.',
+    'pt.where': '{place}. Order Sway {no}.',
     'pt.chosen': 'See you {when}.',
     'pt.change': 'Want to change it? Pick another time.',
     'pt.saved': 'Saved. See you {when}; we will let you know if anything changes.',
-    'pt.nz': 'Your pickup is in Nes Ziona. We will set the time with you on WhatsApp.',
+    'pt.nz': 'Nes Ziona',
     'pt.closed': 'This order is no longer open for pickup.',
     'pt.err': 'That did not save. Try another time.',
     'pt.none': 'No open times right now. Message us on WhatsApp and we will arrange it.',
@@ -695,12 +696,13 @@ const DICT = {
     'co.pickup': 'Where do you pick it up?',
     'co.pickup.row': 'Self pickup',
     'co.free': 'Free',
-    'pk.ashdod': 'Ashdod, 21 HaMatechet St',
-    'pk.ashdod.note': 'Sun-Thu, 08:30-14:30, at a time we agree on WhatsApp.',
-    'pk.ashdod.after': 'We will message you on WhatsApp to set a pickup time (Sun-Thu, 08:30-14:30).',
+    'pk.ashdod': 'Ashdod',
+    'pk.ashdod.note': 'Sun-Thu, 08:30-14:30. Even the same day.',
+    'pk.ashdod.after': 'Once payment is confirmed, we send the exact address on WhatsApp with a link to choose a time.',
     'pk.nesziona': 'Nes Ziona',
-    'pk.nesziona.note': 'Ready there within 2-3 days of payment. We let you know when it is ready.',
-    'pk.nesziona.after': 'It will be waiting there within 2-3 days. We will message you on WhatsApp when it is ready.'
+    'pk.nesziona.note': 'Sun-Thu, 16:00-20:00, from the day after payment.',
+    'pk.nesziona.after': 'Once payment is confirmed, we send the exact address on WhatsApp with a link to choose a time.',
+    'pt.later': 'We send the exact address once payment is confirmed.'
   }
 };
 
@@ -752,7 +754,7 @@ const I18N = {
     const C = window.SWAY, num = (k, d) => (/^\d+$/.test(v[k] ?? '') ? +v[k] : d);
     const price = num('price', C.price), anchor = num('anchor', C.anchor), pair = num('pair_discount', C.pairDiscount);
     const map = new Map([['₪' + C.price, '₪' + price], ['₪' + C.anchor, '₪' + anchor], ['₪' + (2 * C.price - C.pairDiscount), '₪' + (2 * price - pair)],
-      ['רחוב המתכת 21', v.ashdod_address], ['08:30-14:30', v.ashdod_hours], ['א׳-ה׳', v.ashdod_days], ['2-3', v.nesziona_days]].filter(([a, b]) => b && a !== b));
+      ['08:30-14:30', v.ashdod_hours], ['16:00-20:00', v.nesziona_hours], ['א׳-ה׳', v.ashdod_days]].filter(([a, b]) => b && a !== b));
     Object.assign(C, { price, anchor, pairDiscount: pair, pickupOff: ['ashdod', 'nesziona'].filter(k => v[k + '_on'] === '0'),
       soldout: { blue: v.soldout_blue === '1', brown: v.soldout_brown === '1' },
       groupDiscount: { perUnit: num('group_discount', C.groupDiscount.perUnit), minQty: num('group_min', C.groupDiscount.minQty) } });
