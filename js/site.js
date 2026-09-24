@@ -18,7 +18,8 @@
   const whenLoaded = f => (document.readyState === 'complete' ? f() : addEventListener('load', f, { once: true }));
   if (film && !reduced) whenLoaded(() => {
     // whole file as a blob: seeking a blob never stalls on network range requests
-    fetch(phone ? 'assets/film/film-854.mp4' : 'assets/film/film-1280.mp4')
+    // 720p fills a phone's 16:9 band at retina density; big/retina screens get 1080p
+    fetch(!phone && innerWidth * devicePixelRatio > 1400 ? 'assets/film/film-1920.mp4' : 'assets/film/film-1280.mp4')
       .then(r => { if (!r.ok) throw 0; return r.blob(); })
       .then(b => {
         video.preload = 'auto';
