@@ -25,8 +25,10 @@ const wa = (phone, text = '') => `https://wa.me/${intl(phone)}${text ? '?text=' 
 const ic = (id, cls = '') => `<svg class="ic ${cls}" aria-hidden="true"><use href="#a-${id}"/></svg>`;
 const base = location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
 const first = n => String(n || '').trim().split(/\s+/)[0];
-const day = t => new Date(t).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
-const when = t => new Date(t).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+const TZ = 'Asia/Jerusalem';   // the business runs on Israel time, wherever the owner is
+const day = t => new Date(t).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', timeZone: TZ });
+const todayIL = () => new Date().toLocaleDateString('sv-SE', { timeZone: TZ });
+const when = t => new Date(t).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: TZ });
 const hours = t => (Date.now() - Date.parse(t)) / 36e5;
 const ago = t => {
   const m = hours(t) * 60;
@@ -42,7 +44,8 @@ const ST = { pending: 'לא אישר בוואטסאפ', new: 'ממתין לתש�
 const PICK = { ashdod: 'אשדוד', nesziona: 'נס ציונה', courier: 'שליח (ברקוד)' };
 const METHOD = { paybox: 'PayBox', bit: 'ביט', transfer: 'העברה', cash: 'מזומן', other: 'אחר' };
 const COLOUR = { blue: 'כחול ים', brown: 'חום חול' };
-const VIEWS = { today: ['היום', 'today'], orders: ['הזמנות', 'orders'], money: ['כסף', 'money'], marketing: ['שיווק', 'tag'], stock: ['מלאי', 'stock'], people: ['לקוחות', 'people'] };
+const VIEWS = { today: ['היום', 'today'], orders: ['הזמנות', 'orders'], money: ['כסף', 'money'], partners: ['ספקים', 'truck'], marketing: ['שיווק', 'tag'], stock: ['מלאי', 'stock'], people: ['לקוחות', 'people'] };
+const PHONE_TABS = ['today', 'orders', 'money', 'partners'];
 
 const blue = o => o.qty_blue || (o.colour === 'blue' ? o.qty : 0);
 const brown = o => o.qty_brown || (o.colour === 'brown' ? o.qty : 0);
@@ -69,11 +72,11 @@ const T = {
 };
 // "I saw the money" buttons: one per app, so the receipt shows the right payment method
 const payBtns = (o, size, short) => ['paybox', 'bit'].map(m =>
-  `<button class="btn btn--coral ${size}" data-pay="${o.id}" data-via="${m}">${short ? '' : ic('check', 'ic--sm')}${short ? METHOD[m] : `שולם ב${m === 'bit' ? 'ביט' : '־PayBox'}`}</button>`).join('');
+  `<button class="btn btn--coral ${size}" data-pay="${o.id}" data-via="${m}">${ic('check', 'ic--sm')}${short ? METHOD[m] : `שולם ב${m === 'bit' ? 'ביט' : '־PayBox'}`}</button>`).join('');
 const receipt = (o, s) => `קבלה\nלקוח: ${o.name}\nטלפון: ${o.phone}${o.email ? `\nדוא״ל: ${o.email}` : ''}\nפריט: ערסל Sway, ${items(o)}\nסכום: ${s.amount} ₪\nאמצעי תשלום: ${METHOD[s.method] || 'לא צוין'}\nתאריך: ${new Date(s.confirmed_at || Date.now()).toLocaleDateString('he-IL')}\nאסמכתא: ${ref(o, s)}`;
 
 // ---------- state + data ----------
-const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
+const S = { orders: [], reviews: [], inv: null, log: [], coupons: null, expenses: [], events: [], settings: {}, notes: {}, resellers: [], rpay: [], rsl: 0, labels: {}, me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', mkt: 'coupons', more: false, pnew: 0, acct: false, cust: '', palette: false, palq: '', live: false, flash: new Set() };
 const must = r => { if (r.error) throw r.error; return r; };
 
 let seq = 0, snap = '';
@@ -104,6 +107,7 @@ async function load() {
   S.settings = Object.fromEntries((st.data || []).map(x => [x.key, x.value]));
   S.notes = Object.fromEntries((cn.data || []).map(x => [x.phone, x]));
   S.resellers = rs.data || []; S.rpay = rp.data || [];
+  S.errs = [['ביקורות', r], ['הוצאות', ex], ['היסטוריה', ev], ['לקוחות', cn], ['ספקים', rs], ['תשלומי ספקים', rp]].filter(([, x]) => x.error).map(([n]) => n);
   return before;
 }
 
@@ -121,7 +125,7 @@ function announce(before) {
   }
 }
 
-async function refresh(force) { const before = await load(); if (!before && !force) return; if (before) announce(before); render(force); }
+async function refresh(force) { const before = await load(); S.syncedAt = Date.now(); S.syncFail = false; if (!before && !force) return; if (before) announce(before); render(force); }
 
 let toastT;
 function toast(text, no, bad) {
@@ -131,6 +135,8 @@ function toast(text, no, bad) {
   t.hidden = false;
   clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, bad ? 8000 : 5000);
 }
+
+const errBanner = () => S.errs?.length ? `<div class="note" role="alert">חלק מהנתונים לא נטענו (${S.errs.join(', ')}). המספרים יכולים להיות חסרים. לרענן את הדף.</div>` : '';
 
 // ---------- round 2: history, funnel, abandoned orders, coupons, profit ----------
 const EXP = { ads: 'פרסום', stock: 'סחורה', packaging: 'אריזה', fees: 'עמלות', other: 'אחר' };
@@ -151,6 +157,30 @@ const rsPaid = r => S.rpay.filter(p => p.reseller_id === r.id).reduce((a, p) => 
 const rsOwed = r => rsOrders(r).reduce((a, o) => a + o.amount, 0) - rsPaid(r);
 const rsOff = r => Math.round((1 - r.unit_price / C.price) * 100);
 const rsOf = o => o.reseller_id && S.resellers.find(r => r.id === o.reseller_id);
+const rsPays = r => S.rpay.filter(p => p.reseller_id === r.id);
+// every order (+) and payment (−) by date, with the running balance
+function ledger(r) {
+  const rows = [...rsOrders(r).map(o => ({ t: Date.parse(o.created_at), o, amount: o.amount })),
+                ...rsPays(r).map(p => ({ t: Date.parse(p.day + 'T12:00:00'), p, amount: -p.amount }))].sort((a, b) => a.t - b.t);
+  let bal = 0;
+  for (const x of rows) x.bal = bal += x.amount;
+  return rows;
+}
+// payments cover the oldest orders first; what is left unpaid, and for how many days
+function unpaidOrders(r) {
+  let credit = rsPaid(r);
+  return [...rsOrders(r)].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at)).map(o => {
+    const cover = Math.min(credit, o.amount); credit -= cover;
+    return { o, left: o.amount - cover, days: Math.floor(hours(o.created_at) / 24) };
+  }).filter(x => x.left > 0);
+}
+const overdue = r => unpaidOrders(r).filter(x => x.days > (r.terms_days ?? 30));
+const monthUnits = (r, k) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - k); const e = new Date(d); e.setMonth(e.getMonth() + 1);
+  return rsOrders(r).filter(o => Date.parse(o.created_at) >= d && Date.parse(o.created_at) < e).reduce((a, o) => a + o.qty, 0); };
+const statement = r => { const un = unpaidOrders(r), units = rsOrders(r).reduce((a, o) => a + o.qty, 0);
+  return `היי ${first(r.contact_name || r.name)}, סיכום חשבון Sway נכון ל־${new Date().toLocaleDateString('he-IL')}:\n`
+    + `הזמנות: ${rsOrders(r).length} (${units} ערסלים) · ${ils(rsOrders(r).reduce((a, o) => a + o.amount, 0))}\nשולם: ${ils(rsPaid(r))}\nיתרה לתשלום: ${ils(Math.max(0, rsOwed(r)))}`
+    + (un.length ? `\n\nפתוחות:\n${un.map(x => `Sway ${x.o.order_no} · ${day(x.o.created_at)} · ${ils(x.left)}`).join('\n')}` : '') + '\n\nתודה!'; };
 const dadText = o => `הזמנה Sway ${o.order_no} שולמה. להכין:\n${items(o)}\n${o.pickup === 'nesziona' ? 'להביא לנס ציונה (תוך 2-3 ימים)' : 'איסוף מאשדוד, הלקוח יתאם שעה'}\nלקוח: ${o.name}, ${o.phone}`;
 T.recover = o => `היי ${first(o.name)}, ראיתי שהתחלת הזמנה של ערסל Sway (${items(o)}) ולא הספקת לאשר אותה. רוצה שאשמור לך אותה? מספיק לענות כאן.`;
 T.unpaid = o => `היי ${first(o.name)}, ההזמנה Sway ${o.order_no} בוטלה כי לא הגיע תשלום. אם עדיין בא לך את הערסל, אני יכול לפתוח אותה מחדש.`;
@@ -175,7 +205,21 @@ function tasks() {
     else if (o.status === 'ready') add(0, 'pin', o, `מחכה לאיסוף ב${PICK[o.pickup] || 'נקודת האיסוף'}`, `Sway ${o.order_no} · ${esc(o.name)} · ${esc(o.phone)}`,
       `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.ready(o))}">${ic('wa', 'ic--sm')}תיאום</a><button class="btn btn--main btn--sm" data-st="${o.id}:collected">נאסף</button>`);
     if (o.status !== 'cancelled') for (const s of o.order_shares) if (s.status === 'confirmed' && !s.receipt_no)
-      add(0, 'receipt', o, `להוציא קבלה ${ils(s.amount)}`, `${ref(o, s)} · ${esc(o.name)} · שולם ${ago(s.confirmed_at || o.created_at)}`, open(o));
+      add(1, 'receipt', o, `להוציא קבלה ${ils(s.amount)}`, `${ref(o, s)} · ${esc(o.name)} · שולם ${ago(s.confirmed_at || o.created_at)}`,
+        `<button class="btn btn--line btn--sm" data-yesh="${o.id}:${s.id}">${ic('copy', 'ic--sm')}העתקה ליש חשבונית</button><form class="rc" data-rc="${s.id}"><input name="rc" placeholder="מס׳ קבלה" aria-label="מספר קבלה" inputmode="numeric" maxlength="40"><button class="btn btn--line btn--sm">שמירה</button></form>`);
+    // dad has not pressed "קיבלתי" 3 hours after the payment: Alon's blind spot when he is abroad
+    const paidAt = o.status === 'paid' && (S.events.find(e => e.order_id === o.id && e.kind === 'paid')?.at || o.order_shares.map(x => x.confirmed_at).filter(Boolean).sort().at(-1) || o.created_at);
+    if (paidAt && !o.dad_ack_at && hours(paidAt) >= 3 && dadPhone())
+      add(2, 'wa', o, 'אבא עוד לא אישר', `Sway ${o.order_no} · ${items(o)} · שולם ${ago(paidAt)}`,
+        `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(dadPhone(), dadText(o))}">${ic('wa', 'ic--sm')}לשלוח לאבא שוב</a>${open(o)}`);
+  }
+  for (const r of S.resellers) {
+    const od = overdue(r);
+    if (od.length) add(1, 'truck', null, `לגבות מ${esc(r.name)}: ${ils(od.reduce((a, x) => a + x.left, 0))}`, `עברו ${od[0].days} ימים מההזמנה הכי ישנה (תנאי תשלום: ${r.terms_days ?? 30} יום)`,
+      `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(r.phone, statement(r))}">${ic('wa', 'ic--sm')}סיכום חשבון</a><button class="btn btn--line btn--sm" data-rsl="${r.id}">כרטיס</button>`);
+    const noInv = rsPays(r).filter(p => !p.receipt_no);
+    if (noInv.length) add(0, 'receipt', null, `להוציא חשבונית ל${esc(r.name)}`, `${noInv.length} תשלומים בלי מספר חשבונית · ${ils(noInv.reduce((a, p) => a + p.amount, 0))}`,
+      `<button class="btn btn--line btn--sm" data-rsl="${r.id}">כרטיס</button>`);
   }
   for (const k of stock()) if (k.low) add(1, 'stock', null, `מלאי נמוך: ${COLOUR[k.colour]}`, `נשארו ${k.free} פנויים`, '<a class="btn btn--line btn--sm" href="#stock">למלאי</a>');
   const pend = S.reviews.filter(r => r.status === 'pending').length;
@@ -205,7 +249,7 @@ function since(p) {
 function payments(p) {
   const from = since(p), out = [];
   for (const o of S.orders) for (const s of o.order_shares)
-    if (s.status === 'confirmed') { const t = Date.parse(s.confirmed_at || o.created_at); if (t >= from) out.push({ o, s, t }); }
+    if (s.status === 'confirmed' && !s.refunded_at) { const t = Date.parse(s.confirmed_at || o.created_at); if (t >= from) out.push({ o, s, t }); }
   return out.sort((a, b) => b.t - a.t);
 }
 function buckets(pays, p) {
@@ -237,24 +281,25 @@ function viewToday() {
   const waiting = S.orders.filter(o => o.status === 'new');
   const free = stock().reduce((a, k) => a + k.free, 0);
   const date = new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
-  const recent = S.orders.filter(o => o.status !== 'pending').slice(0, 6);
-  return top('היום', `${date} · ${list.length ? `${list.length} דברים לעשות` : 'הכל מטופל'}`) +
-    `<section class="sec" aria-label="מה לעשות"><div class="queue">${list.length ? list.map(k => `<article class="panel task${k.hot === 2 ? ' task--hot' : ''}">
-      <span class="task__ic">${ic(k.icon)}</span><div><h3>${k.title}</h3><p>${k.sub}</p></div><div class="task__do">${k.act}</div></article>`).join('')
+  const now = list.filter(k => k.hot >= 1), waitingOn = list.filter(k => k.hot < 1);
+  const taskCard = k => `<article class="panel task${k.hot === 2 ? ' task--hot' : ''}">
+      <span class="task__ic">${ic(k.icon)}</span><div><h3>${k.title}</h3><p>${k.sub}</p></div><div class="task__do">${k.act}</div></article>`;
+  return top('היום', `${date} · ${now.length ? `${now.length} דברים לעשות עכשיו` : 'הכל מטופל'}`) + errBanner() +
+    `<section class="sec" aria-label="לעשות עכשיו"><div class="queue">${now.length ? now.map(taskCard).join('')
       : `<div class="panel all-clear"><svg viewBox="0 0 64 24" aria-hidden="true"><use href="#a-mark"/></svg><div><b>אין כלום לטפל בו עכשיו</b><span>הזמנה חדשה או דיווח תשלום יופיעו כאן לבד.</span></div></div>`}</div></section>
+    ${waitingOn.length ? `<section class="sec"><h2>מחכה ללקוחות או לתזכורת <span class="count">${waitingOn.length}</span></h2><div class="queue">${waitingOn.map(taskCard).join('')}</div></section>` : ''}
     <section class="sec"><h2>המצב</h2><div class="stats">
-      <div class="stat"><span>הכנסות החודש</span><b class="num">${ils(month)}</b><small>לפי תשלומים שאושרו</small></div>
-      <div class="stat${waiting.length ? ' stat--warn' : ''}"><span>ממתין לתשלום</span><b class="num">${ils(waiting.reduce((a, o) => a + due(o), 0))}</b><small>${waiting.length} הזמנות</small></div>
-      <div class="stat"><span>בטיפול</span><b class="num">${S.orders.filter(o => ['paid', 'ready'].includes(o.status)).length}</b><small>שולמו ועוד לא נאספו</small></div>
-      <div class="stat"><span>פנויים במלאי</span><b class="num">${S.inv ? free : '?'}</b><small>${S.inv ? 'אחרי הזמנות פתוחות' : 'עוד לא הוגדר'}</small></div>
-    </div></section>
-    <section class="sec"><h2>הזמנות אחרונות</h2><div class="panel rows">${recent.map(row).join('') || '<p class="empty">עוד אין הזמנות.</p>'}</div></section>`;
+      <a class="stat" href="#money"><span>הכנסות החודש</span><b class="num">${ils(month)}</b><small>לפי תשלומים שאושרו</small></a>
+      <a class="stat${waiting.length ? ' stat--warn' : ''}" href="#orders"><span>ממתין לתשלום</span><b class="num">${ils(waiting.reduce((a, o) => a + due(o), 0))}</b><small>${waiting.length} הזמנות</small></a>
+      <a class="stat" href="#orders"><span>בטיפול</span><b class="num">${S.orders.filter(o => ['paid', 'ready'].includes(o.status)).length}</b><small>שולמו ועוד לא נאספו</small></a>
+      <a class="stat" href="#stock"><span>פנויים במלאי</span><b class="num">${S.inv ? free : '?'}</b><small>${S.inv ? 'אחרי הזמנות פתוחות' : 'עוד לא הוגדר'}</small></a>
+    </div></section>`;
 }
 
 function card(o) {
-  const late = (o.status === 'new' && hours(o.created_at) >= 20) || (o.status === 'paid' && hours(o.created_at) >= 72);
+  const late = (o.status === 'new' && hours(o.created_at) >= 24) || (o.status === 'paid' && hours(o.created_at) >= 72);
   const quick = reported(o) ? payBtns(o, 'btn--sm', true)
-    : o.status === 'new' ? `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.remind(o))}">${ic('wa', 'ic--sm')}תזכורת</a>`
+    : o.status === 'new' ? `${payBtns(o, 'btn--sm', true)}<a class="btn btn--wa btn--sm btn--icon" target="_blank" rel="noopener" href="${wa(o.phone, T.remind(o))}" aria-label="תזכורת בוואטסאפ">${ic('wa', 'ic--sm')}</a>`
     : o.status === 'paid' ? `<button class="btn btn--main btn--sm" data-st="${o.id}:ready">מוכן לאיסוף</button>`
     : o.status === 'ready' ? `<button class="btn btn--main btn--sm" data-st="${o.id}:collected">נאסף</button>` : '';
   return `<div class="oc${S.flash.has(o.id) ? ' is-flash' : ''}"><button class="oc__hit" data-open="${o.order_no}">
@@ -281,13 +326,15 @@ function viewOrders() {
   const mode = S.q.trim() && S.mode === 'board' ? 'all' : S.mode;
   let body;
   if (mode === 'board') {
-    const cols = [['new', 'ממתין לתשלום', 'נפתחה בוואטסאפ'], ['paid', 'שולם, להכין', 'להביא לנקודת האיסוף'], ['ready', 'מוכן לאיסוף', 'מחכה ללקוח'], ['collected', 'נאסף', '30 הימים האחרונים']];
-    body = `<div class="board">${cols.map(([st, l, sub]) => {
+    const cols = [['new', 'ממתין לתשלום', 'אין הזמנות שממתינות לתשלום'], ['paid', 'שולם, להכין', 'אין מה להכין'], ['ready', 'מוכן לאיסוף', 'אין הזמנות שמחכות לאיסוף'], ['collected', 'נאסף', 'עוד לא נאסף כלום החודש']];
+    const phone = matchMedia('(max-width:900px)').matches;
+    const stageChips = phone ? chips('stage', cols.map(([st, l]) => [st, l, all.filter(o => o.status === st).length]), S.stage || 'new') : '';
+    body = `${stageChips}<div class="board">${cols.filter(([st]) => !phone || st === (S.stage || 'new')).map(([st, l, sub]) => {
       let list = all.filter(o => o.status === st);
       if (st === 'new') list.sort((a, b) => reported(b) - reported(a));
       if (st === 'collected') list = list.filter(o => hours(o.created_at) < 24 * 30).slice(0, 12);
       return `<section class="col" aria-label="${l}"><header><span class="pill pill--${st}">${l}</span><span class="n num">${list.length}</span></header>
-        <div class="col__list">${list.map(card).join('') || `<p class="col__empty">${sub}: אין כרגע</p>`}</div></section>`;
+        <div class="col__list">${list.map(card).join('') || `<p class="col__empty">${sub}</p>`}</div></section>`;
     }).join('')}</div>`;
   } else {
     const list = all.filter(o => mode === 'all' ? true : o.status === mode);
@@ -361,7 +408,7 @@ function expensesBox() {
   const list = S.expenses.filter(x => inPeriod(x.day + 'T12:00:00'));
   return `<section class="sec"><h2>הוצאות <span class="count">${ils(list.reduce((a, x) => a + x.amount, 0))}</span></h2>
     <form class="panel box cform" data-expense>
-      <label class="field"><span>תאריך</span><input name="day" type="date" value="${new Date().toISOString().slice(0, 10)}" required></label>
+      <label class="field"><span>תאריך</span><input name="day" type="date" value="${todayIL()}" required></label>
       <label class="field"><span>סוג</span><select name="category">${Object.entries(EXP).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></label>
       <label class="field"><span>סכום (₪)</span><input name="amount" type="number" inputmode="numeric" min="1" required></label>
       <label class="field"><span>הערה</span><input name="note" maxlength="200" placeholder="למשל: קמפיין מטא, שבוע 1"></label>
@@ -369,6 +416,53 @@ function expensesBox() {
     <div class="panel" style="overflow-x:auto"><table class="tbl"><tbody>${list.map(x => `<tr><td class="num">${day(x.day + 'T12:00:00')}</td><td>${EXP[x.category]}</td>
       <td>${esc(x.note || '')}</td><td class="r num">${ils(x.amount)}</td><td class="acts"><button class="btn btn--ghost btn--sm" data-xdel="${x.id}">מחיקה</button></td></tr>`).join('')
       || '<tr><td class="empty">אין הוצאות בתקופה הזו.</td></tr>'}</tbody></table></div></section>`;
+}
+
+function viewPartners() {
+  if (!S.coupons) return top('ספקים') + `<div class="panel empty"><b>עוד לא מחובר</b>צריך להריץ את עדכון המסד.</div>`;
+  const rs = S.resellers, act = rs.filter(r => r.active);
+  const mStart = since('month');
+  const monthOrders = S.orders.filter(o => o.reseller_id && o.status !== 'cancelled' && Date.parse(o.created_at) >= mStart);
+  const owed = rs.reduce((a, r) => a + Math.max(0, rsOwed(r)), 0), od = rs.reduce((a, r) => a + overdue(r).reduce((x, y) => x + y.left, 0), 0);
+  const q = S.q.trim().toLowerCase();
+  const list = rs.filter(r => !q || r.name.toLowerCase().includes(q) || (r.business_name || '').toLowerCase().includes(q) || r.phone.includes(q.replace(/\D/g, '') || '~'));
+  return top('ספקים', 'מי שקונה ממך במחיר סיטונאי ומוכר הלאה', true) +
+    `<section class="sec kpis">
+      <div class="panel kpi kpi--main"><span>חייבים לך</span><b class="num">${ils(owed)}</b><small>${od ? `מתוכם ${ils(od)} באיחור` : 'אין איחורים'}</small></div>
+      <div class="panel kpi"><span>ערסלים החודש</span><b class="num">${monthOrders.reduce((a, o) => a + o.qty, 0)}</b><small>${monthOrders.length} הזמנות</small></div>
+      <div class="panel kpi"><span>נגבה החודש</span><b class="num">${ils(S.rpay.filter(p => Date.parse(p.day + 'T12:00:00') >= mStart).reduce((a, p) => a + p.amount, 0))}</b><small>מכל הספקים</small></div>
+      <div class="panel kpi"><span>ספקים פעילים</span><b class="num">${act.length}</b><small>מתוך ${rs.length}</small></div>
+    </section>
+    <section class="sec"><h2>כל הספקים <button class="btn btn--main btn--sm" data-pnew style="margin-inline-start:auto">${ic('plus', 'ic--sm')}ספק חדש</button></h2>
+      ${S.pnew ? partnerForm() : ''}
+      <div class="panel" style="overflow-x:auto"><table class="tbl ptbl"><thead><tr><th>ספק</th><th class="r">מחיר</th><th class="r">הזמנות</th><th class="r">ערסלים</th><th class="r">שולם</th><th class="r">יתרה</th><th>הזמנה אחרונה</th><th></th></tr></thead><tbody>
+      ${list.map(r => { const os = rsOrders(r), un = unpaidOrders(r), late = overdue(r).length, ow = rsOwed(r), last = os[0];
+        return `<tr${r.active ? '' : ' class="off"'}><td><button class="linkish" data-rsl="${r.id}"><b>${esc(r.name)}</b></button>${r.business_name ? `<br><small>${esc(r.business_name)}</small>` : ''}${r.active ? '' : ' <span class="pill">לא פעיל</span>'}</td>
+          <td class="r num">${ils(r.unit_price)}<br><small>${rsOff(r)}% הנחה</small></td><td class="r num">${os.length}</td><td class="r num">${os.reduce((a, o) => a + o.qty, 0)}</td>
+          <td class="r num">${ils(rsPaid(r))}</td>
+          <td class="r num">${ow > 0 ? `<b style="color:var(--coral-ink)">${ils(ow)}</b>${un.length ? `<br><span class="pill ${late ? 'pill--cancelled' : 'pill--new'}">${late ? 'באיחור' : 'פתוח'} · ${un[0].days} ימים</span>` : ''}` : ow < 0 ? `זכות ${ils(-ow)}` : '<span class="pill pill--ok">מאופס</span>'}</td>
+          <td>${last ? ago(last.created_at) : '—'}</td>
+          <td class="acts"><a class="btn btn--wa btn--sm btn--icon" target="_blank" rel="noopener" href="${wa(r.phone)}" aria-label="וואטסאפ">${ic('wa', 'ic--sm')}</a><button class="btn btn--line btn--sm" data-rsl="${r.id}">כרטיס</button></td></tr>`; }).join('')
+        || '<tr><td colspan="8" class="empty">עוד אין ספקים.</td></tr>'}</tbody></table></div>
+      <p class="hint">ספק ששולח לבוט (052) תמונת ברקוד עם צבע וכמות פותח הזמנה לבד, ואבא מקבל אותה עם כפתורים. שאר ההודעות שלו מגיעות אליך.</p></section>`;
+}
+
+// new partner / edit partner: the same fields
+function partnerForm(r = {}) {
+  const v = k => esc(r[k] ?? '');
+  return `<form class="panel box cform" data-${r.id ? `rs-edit="${r.id}"` : 'rs-new'}><h3>${r.id ? 'פרטי הספק' : 'ספק חדש'}</h3>
+    <label class="field"><span>שם</span><input name="name" required maxlength="80" value="${v('name')}"></label>
+    <label class="field"><span>טלפון (הבוט מזהה לפיו)</span><input name="phone" required inputmode="tel" dir="ltr" placeholder="05XXXXXXXX" value="${v('phone')}"></label>
+    <label class="field"><span>מחיר ליחידה (₪)</span><input name="price" type="number" inputmode="numeric" min="1" max="450" required value="${v('unit_price')}" placeholder="360"></label>
+    <label class="field"><span>תנאי תשלום (ימים)</span><input name="terms" type="number" inputmode="numeric" min="0" max="180" value="${r.terms_days ?? 30}"></label>
+    <label class="field"><span>שם העסק</span><input name="business" maxlength="120" value="${v('business_name')}"></label>
+    <label class="field"><span>ח.פ / ע.מ</span><input name="tax" maxlength="20" inputmode="numeric" dir="ltr" value="${v('tax_id')}"></label>
+    <label class="field"><span>איש קשר</span><input name="contact" maxlength="80" value="${v('contact_name')}"></label>
+    <label class="field"><span>דוא״ל</span><input name="email" type="email" dir="ltr" value="${v('email')}"></label>
+    <label class="field"><span>כתובת</span><input name="address" maxlength="200" value="${v('address')}"></label>
+    <label class="field"><span>הערה</span><input name="note" maxlength="500" value="${v('note')}"></label>
+    ${r.id ? `<label class="check"><input type="checkbox" name="active"${r.active ? ' checked' : ''}>פעיל (הבוט מזהה אותו)</label>` : ''}
+    <button class="btn btn--main">${r.id ? 'שמירה' : 'הוספה'}</button></form>`;
 }
 
 function viewMarketing() {
@@ -443,20 +537,7 @@ function customers() {
 function viewPeople() {
   const pend = S.reviews.filter(r => r.status === 'pending').length;
   let body;
-  if (S.ppl === 'resellers') {
-    body = `<form class="panel box cform" data-rs-new><h3>משווק חדש</h3>
-        <label class="field"><span>שם</span><input name="name" required maxlength="80"></label>
-        <label class="field"><span>טלפון</span><input name="phone" required inputmode="tel" dir="ltr" placeholder="05XXXXXXXX"></label>
-        <label class="field"><span>מחיר ליחידה (₪)</span><input name="price" type="number" inputmode="numeric" min="1" max="450" required placeholder="360"></label>
-        <button class="btn btn--main">הוספה</button></form>
-      <div class="panel sec">${S.resellers.map(r => { const ow = rsOwed(r), open = rsOrders(r).filter(live).length;
-        return `<div class="cust"><span><b>${esc(r.name)}</b>${r.active ? '' : ' <span class="pill pill--cancelled">לא פעיל</span>'}<small class="num">${esc(r.phone)}</small></span>
-          <span><span class="num">${ils(r.unit_price)}</span> ליחידה · ${rsOff(r)}% הנחה</span>
-          <span>${open ? `${open} פתוחות · ` : ''}${ow > 0 ? `<b class="num" style="color:var(--coral-ink)">חייבת ${ils(ow)}</b>` : ow < 0 ? `זכות ${ils(-ow)}` : 'אין חוב'}</span>
-          <span class="cust__do"><button class="btn btn--line btn--sm" data-rsl="${r.id}">כרטיס</button></span></div>`; }).join('')
-      || '<p class="empty"><b>עוד אין משווקים</b></p>'}</div>
-      <p class="hint">משווק ששולח לבוט תמונת ברקוד עם צבע וכמות פותח הזמנה, ואבא מקבל אותה להכנה. שאר ההודעות שלו מגיעות אליך.</p>`;
-  } else if (S.ppl === 'reviews') {
+  if (S.ppl === 'reviews') {
     body = `<div class="panel">${S.reviews.map(r => {
       const img = r.photo_path ? `${C.supabaseUrl}/storage/v1/object/public/reviews/${r.photo_path}` : '';
       return `<article class="rev">${img ? `<img src="${esc(img)}" alt="תמונה מהלקוח" loading="lazy">` : '<span></span>'}<div>
@@ -477,7 +558,7 @@ function viewPeople() {
       || '<p class="empty"><b>לא נמצאו לקוחות</b></p>'}</div>`;
   }
   return top('לקוחות', `${customers().length} לקוחות`, S.ppl !== 'reviews') +
-    chips('ppl', [['customers', 'לקוחות'], ['resellers', 'משווקים', S.resellers.length || null], ['reviews', 'ביקורות', pend || null]], S.ppl) + `<div class="sec">${body}</div>`;
+    chips('ppl', [['customers', 'לקוחות'], ['reviews', 'ביקורות', pend || null]], S.ppl) + `<div class="sec">${body}</div>`;
 }
 
 // ---------- drawers ----------
@@ -500,24 +581,27 @@ function orderDrawer(o) {
     <div class="drawer__body">
       ${idx >= 0 ? `<div><div class="steps">${steps.map((_, i) => `<span class="${i < idx ? 'on' : i === idx ? 'now' : ''}"></span>`).join('')}</div>
         <div class="steps-l">${steps.map(s => `<span>${s}</span>`).join('')}</div></div>` : ''}
-      <dl class="panel kv"><dt>לקוח</dt><dd>${esc(o.name)}</dd>
+      ${!o.reseller_id && S.notes[o.phone] ? `<div class="note">${(S.notes[o.phone].tags || []).map(t => `<span class="pill">${esc(t)}</span> `).join('')}${esc(S.notes[o.phone].note || '')}</div>` : ''}
+      <dl class="panel kv"><dt>לקוח</dt><dd>${esc(o.name)}${o.reseller_id ? '' : ` · <button class="linkish" data-cust-from="${esc(o.phone)}">כרטיס לקוח</button>`}</dd>
         <dt>טלפון</dt><dd><a class="num" href="tel:${esc(o.phone)}">${esc(o.phone)}</a></dd>
         ${o.email ? `<dt>דוא״ל</dt><dd>${esc(o.email)}</dd>` : ''}
         <dt>פריטים</dt><dd>${sw(o)}${items(o)}</dd>
         <dt>סכום</dt><dd class="num">${ils(o.amount)}${o.discount ? ` <small>(הנחה ${ils(o.discount)}${o.coupon ? `, קוד ${esc(o.coupon)}` : ''})</small>` : ''}</dd>
-        <dt>איסוף</dt><dd>${o.pickup ? PICK[o.pickup] + (o.pickup === 'nesziona' && ['new', 'paid'].includes(o.status) ? ' · לתאם עם אבא' : '') : esc(`${o.address || ''}, ${o.city || ''}`)}</dd>
+        <dt>איסוף</dt><dd>${['new', 'paid'].includes(o.status) && o.pickup && o.pickup !== 'courier' ? `<select data-pickup="${o.id}" aria-label="נקודת איסוף">${['ashdod', 'nesziona'].map(k => `<option value="${k}"${o.pickup === k ? ' selected' : ''}>${PICK[k]}</option>`).join('')}</select>` : o.pickup ? PICK[o.pickup] : ''}${o.pickup ? '' + (o.pickup === 'nesziona' && ['new', 'paid'].includes(o.status) ? ' · לתאם עם אבא' : '') : esc(`${o.address || ''}, ${o.city || ''}`)}</dd>
         <dt>נפתחה</dt><dd>${when(o.created_at)} · ${o.source === 'whatsapp' ? 'בוט וואטסאפ' : 'אתר'}${o.people > 1 ? ` · קנייה משותפת ל־${o.people}` : ''}</dd></dl>
       ${o.is_gift ? `<div class="note">מתנה ל${esc(o.recipient_name)} · <a class="num" href="tel:${esc(o.recipient_phone)}">${esc(o.recipient_phone)}</a>${o.gift_note ? `<br>פתק: “${esc(o.gift_note)}”` : ''}</div>` : ''}
       ${o.notes ? `<div class="note">הערת הלקוח: ${esc(o.notes)}</div>` : ''}
       ${o.reseller_id ? `<section class="panel box"><h3>משווקת</h3><p>משולם דרך החשבון של ${esc(o.name)}: ${o.qty} × ${ils(o.unit_price)}. ${rsOf(o) ? `היתרה שלה: ${ils(rsOwed(rsOf(o)))}.` : ''}</p>
         ${o.label_path ? (S.labels[o.label_path] ? `<a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${esc(S.labels[o.label_path])}">${ic('receipt', 'ic--sm')}הברקוד להדפסה</a>` : '<p class="hint">טוען את הברקוד…</p>') : '<p class="hint">אין תמונת ברקוד שמורה.</p>'}</section>`
-        : `<section class="panel box"><h3>תשלום</h3>${shareBox}</section>`}
+        : `<section class="panel box"><h3>תשלום</h3>${shareBox}
+        ${o.status === 'cancelled' ? o.order_shares.filter(x => x.status === 'confirmed').map(x => x.refunded_at ? `<p class="hint">${ils(x.amount)} הוחזרו ללקוח ב־${day(x.refunded_at)}.</p>`
+          : `<button class="btn btn--line btn--sm" data-refund="${x.id}">הכסף הוחזר ללקוח (${ils(x.amount)})</button>`).join('') : ''}</section>`}
       <section class="panel box"><h3>הודעה ללקוח</h3><div class="tmpl">
         ${o.status === 'new' ? `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.pay(o))}">${ic('wa', 'ic--sm')}פרטי תשלום</a>
           <a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.remind(o))}">${ic('wa', 'ic--sm')}תזכורת</a>` : ''}
         ${['paid', 'ready'].includes(o.status) ? `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.ready(o))}">${ic('wa', 'ic--sm')}תיאום איסוף</a>` : ''}
         ${o.status === 'collected' ? `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.review(o))}">${ic('wa', 'ic--sm')}בקשת ביקורת</a>` : ''}
-        <a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${wa(o.phone)}">${ic('wa', 'ic--sm')}צ׳אט ריק</a>
+        <a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${wa(o.phone)}">${ic('wa', 'ic--sm')}פתיחת צ׳אט</a>
         ${o.people > 1 ? `<a class="btn btn--line btn--sm" target="_blank" rel="noopener" href="${base}order.html?o=${o.token}">עמוד המעקב</a>` : ''}</div></section>
       ${['paid', 'ready'].includes(o.status) && dadPhone() ? `<section class="panel box"><h3>אבא</h3><p class="hint">הבוט שולח לאבא הודעה לבד כשמסמנים ״שולם״. אם צריך שוב:</p>
         <a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(dadPhone(), dadText(o))}">${ic('wa', 'ic--sm')}לשלוח לאבא</a></section>` : ''}
@@ -527,7 +611,7 @@ function orderDrawer(o) {
         <div class="field" style="margin:0"><textarea id="an" name="note" maxlength="1000" placeholder="למשל: יאסוף ביום שלישי, אבא מביא">${esc(o.admin_note || '')}</textarea></div>
         <button class="btn btn--line btn--sm" style="margin-top:8px">שמירת הערה</button></form>
     </div>
-    <footer class="drawer__foot">${main}${['pending', 'new', 'paid', 'ready'].includes(o.status) ? `<button class="btn btn--bad" data-st="${o.id}:cancelled">ביטול הזמנה</button>` : ''}</footer></aside>`;
+    <footer class="drawer__foot">${main}${BACK[o.status] ? `<button class="btn btn--ghost" data-st="${o.id}:${BACK[o.status]}">חזרה ל״${ST[BACK[o.status]]}״</button>` : ''}${['pending', 'new', 'paid', 'ready'].includes(o.status) ? `<button class="btn btn--bad" data-st="${o.id}:cancelled">ביטול הזמנה</button>` : ''}</footer></aside>`;
 }
 
 const acctDrawer = () => `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh">
@@ -557,29 +641,50 @@ function custDrawer(phone) {
 
 function rslDrawer(id) {
   const r = S.resellers.find(x => x.id === id); if (!r) return '';
-  const os = S.orders.filter(o => o.reseller_id === r.id), pays = S.rpay.filter(p => p.reseller_id === r.id);
-  const units = rsOrders(r).reduce((a, o) => a + o.qty, 0), ow = rsOwed(r);
-  return `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh">
-    <header class="drawer__head"><h2 id="dh" tabindex="-1">${esc(r.name)}</h2><button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
+  const os = S.orders.filter(o => o.reseller_id === r.id), led = ledger(r), un = unpaidOrders(r), late = overdue(r);
+  const units = rsOrders(r).reduce((a, o) => a + o.qty, 0), ow = rsOwed(r), billed = rsOrders(r).reduce((a, o) => a + o.amount, 0);
+  const months = [5, 4, 3, 2, 1, 0].map(k => ({ k, n: monthUnits(r, k), label: (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - k); return d.toLocaleDateString('he-IL', { month: 'short' }); })() }));
+  const mx = Math.max(1, ...months.map(m => m.n));
+  return `<div class="scrim" data-close></div><aside class="drawer drawer--wide" role="dialog" aria-modal="true" aria-labelledby="dh">
+    <header class="drawer__head"><h2 id="dh" tabindex="-1">${esc(r.name)}</h2>${r.active ? '' : '<span class="pill">לא פעיל</span>'}<button class="btn btn--ghost btn--icon" data-close aria-label="סגירה">${ic('x')}</button></header>
     <div class="drawer__body">
-      <dl class="panel kv"><dt>טלפון</dt><dd><a class="num" href="tel:${esc(r.phone)}">${esc(r.phone)}</a></dd>
-        <dt>מחיר ליחידה</dt><dd class="num">${ils(r.unit_price)} <small>(${rsOff(r)}% הנחה מ־${ils(C.price)})</small></dd>
-        <dt>ערסלים עד היום</dt><dd class="num">${units}</dd><dt>שילמה</dt><dd class="num">${ils(rsPaid(r))}</dd>
-        <dt>יתרה</dt><dd class="num" style="color:${ow > 0 ? 'var(--coral-ink)' : 'var(--ok)'}">${ow > 0 ? 'חייבת ' + ils(ow) : ow < 0 ? 'זכות ' + ils(-ow) : 'אין חוב'}</dd></dl>
-      <form class="panel box cform" data-rs-pay="${r.id}"><h3>רישום תשלום</h3>
+      <div class="pkpis">
+        <div><span>יתרה</span><b class="num" style="color:${ow > 0 ? 'var(--coral-ink)' : 'var(--ok)'}">${ow > 0 ? ils(ow) : ow < 0 ? 'זכות ' + ils(-ow) : '₪0'}</b><small>${late.length ? `${ils(late.reduce((a, x) => a + x.left, 0))} באיחור` : `תנאים: ${r.terms_days ?? 30} יום`}</small></div>
+        <div><span>חויב עד היום</span><b class="num">${ils(billed)}</b><small>${rsOrders(r).length} הזמנות</small></div>
+        <div><span>שולם</span><b class="num">${ils(rsPaid(r))}</b><small>${rsPays(r).length} תשלומים</small></div>
+        <div><span>ערסלים</span><b class="num">${units}</b><small>${ils(r.unit_price)} ליחידה · ${rsOff(r)}% הנחה</small></div>
+      </div>
+      <div class="tmpl">
+        <button class="btn btn--main btn--sm" data-pact="order">${ic('plus', 'ic--sm')}הזמנה ידנית</button>
+        <button class="btn btn--line btn--sm" data-pact="pay">${ic('money', 'ic--sm')}רישום תשלום</button>
+        <a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(r.phone, statement(r))}">${ic('wa', 'ic--sm')}סיכום חשבון בוואטסאפ</a>
+        <a class="btn btn--line btn--sm" href="tel:${esc(r.phone)}">${ic('phone', 'ic--sm')}שיחה</a>
+        <button class="btn btn--line btn--sm" data-pcsv="${r.id}">${ic('download', 'ic--sm')}כרטסת לאקסל</button>
+        <button class="btn btn--ghost btn--sm" data-pact="edit">פרטים ותנאים</button>
+      </div>
+      ${S.pact === 'order' ? `<form class="panel box cform" data-p-order="${r.id}"><h3>הזמנה ידנית (למשל כשהספק שלח לך ישר)</h3>
+        <label class="field"><span>${COLOUR.blue}</span><input name="blue" type="number" inputmode="numeric" min="0" max="50" value="0"></label>
+        <label class="field"><span>${COLOUR.brown}</span><input name="brown" type="number" inputmode="numeric" min="0" max="50" value="0"></label>
+        <label class="field" style="grid-column:1/-1"><span>ברקוד של השליח (תמונה או PDF)</span><input name="label" type="file" accept="image/*,application/pdf"></label>
+        <p class="hint" style="grid-column:1/-1">אבא יקבל את ההזמנה עם הברקוד ועם כפתור ״קיבלתי״. החוב של הספק יעלה ב־${ils(r.unit_price)} לכל ערסל.</p>
+        <button class="btn btn--main">פתיחת הזמנה</button></form>` : ''}
+      ${S.pact === 'pay' ? `<form class="panel box cform" data-rs-pay="${r.id}"><h3>רישום תשלום</h3>
         <label class="field"><span>סכום (₪)</span><input name="amount" type="number" inputmode="numeric" min="1" required value="${ow > 0 ? ow : ''}"></label>
-        <label class="field"><span>תאריך</span><input name="day" type="date" value="${new Date().toISOString().slice(0, 10)}" required></label>
+        <label class="field"><span>תאריך</span><input name="day" type="date" value="${todayIL()}" required></label>
         <label class="field"><span>אמצעי</span><select name="method"><option value="transfer">העברה בנקאית</option><option value="bit">ביט</option><option value="paybox">PayBox</option><option value="cash">מזומן</option></select></label>
-        <label class="field"><span>מס׳ חשבונית (לא חובה)</span><input name="receipt" maxlength="40" inputmode="numeric"></label>
-        <button class="btn btn--main">רישום</button></form>
-      ${pays.length ? `<section class="panel"><table class="tbl"><tbody>${pays.map(p => `<tr><td class="num">${day(p.day + 'T12:00:00')}</td><td>${METHOD[p.method] || 'העברה'}</td>
-        <td>${p.receipt_no ? 'חשבונית ' + esc(p.receipt_no) : ''}</td><td class="r num">${ils(p.amount)}</td><td class="acts"><button class="btn btn--ghost btn--sm" data-rpdel="${p.id}">מחיקה</button></td></tr>`).join('')}</tbody></table></section>` : ''}
-      <form class="panel box cform" data-rs-edit="${r.id}"><h3>פרטים</h3>
-        <label class="field"><span>מחיר ליחידה (₪)</span><input name="price" type="number" inputmode="numeric" min="1" max="450" value="${r.unit_price}" required></label>
-        <label class="field"><span>הערה</span><input name="note" maxlength="500" value="${esc(r.note || '')}"></label>
-        <label class="check"><input type="checkbox" name="active"${r.active ? ' checked' : ''}>פעיל (הבוט מזהה אותו)</label>
-        <button class="btn btn--line">שמירה</button></form>
-      <section class="panel rows">${os.map(row).join('') || '<p class="empty">עוד אין הזמנות.</p>'}</section>
+        <label class="field"><span>מס׳ חשבונית</span><input name="receipt" maxlength="40" inputmode="numeric" placeholder="אפשר להוסיף אחר כך"></label>
+        <button class="btn btn--main">רישום</button></form>` : ''}
+      ${S.pact === 'edit' ? partnerForm(r) : ''}
+      ${un.length ? `<section class="panel box"><h3>הזמנות שעוד לא שולמו</h3>${un.map(x => `<div class="pl"><span><button class="linkish" data-open="${x.o.order_no}">Sway ${x.o.order_no}</button> · ${day(x.o.created_at)} · ${x.o.qty} ערסלים
+        ${x.days > (r.terms_days ?? 30) ? `<span class="pill pill--cancelled">${x.days} ימים, באיחור</span>` : `<span class="pill pill--new">${x.days} ימים</span>`}</span><b class="num">${ils(x.left)}</b></div>`).join('')}</section>` : ''}
+      <section class="panel box"><h3>ערסלים בחודש</h3><div class="mbars">${months.map(m => `<div><i style="height:${Math.round(m.n / mx * 100)}%"></i><b class="num">${m.n}</b><span>${m.label}</span></div>`).join('')}</div></section>
+      <section class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>תאריך</th><th>פעולה</th><th class="r">חובה</th><th class="r">זכות</th><th class="r">יתרה</th><th></th></tr></thead><tbody>
+        ${[...led].reverse().map(x => x.o ? `<tr><td class="num">${day(x.t)}</td><td><button class="linkish" data-open="${x.o.order_no}">Sway ${x.o.order_no}</button> · ${sw(x.o)}${items(x.o)} <span class="pill pill--${x.o.status}">${ST[x.o.status]}</span></td><td class="r num">${ils(x.amount)}</td><td></td><td class="r num">${ils(x.bal)}</td><td></td></tr>`
+          : `<tr><td class="num">${day(x.t)}</td><td>תשלום · ${METHOD[x.p.method] || 'העברה'}${x.p.receipt_no ? ` · חשבונית ${esc(x.p.receipt_no)}` : ''}</td><td></td><td class="r num">${ils(-x.amount)}</td><td class="r num">${ils(x.bal)}</td>
+            <td class="acts">${x.p.receipt_no ? '' : `<form class="rc" data-rprc="${x.p.id}"><input name="rc" placeholder="מס׳ חשבונית" aria-label="מספר חשבונית" inputmode="numeric" maxlength="40"><button class="btn btn--line btn--sm">שמירה</button></form>`}<button class="btn btn--ghost btn--sm" data-rpdel="${x.p.id}">מחיקה</button></td></tr>`).join('')
+          || '<tr><td colspan="6" class="empty">עוד אין תנועות.</td></tr>'}</tbody></table></section>
+      ${r.business_name || r.tax_id || r.email || r.address || r.contact_name || r.note ? `<dl class="panel kv">${r.business_name ? `<dt>עסק</dt><dd>${esc(r.business_name)}</dd>` : ''}${r.tax_id ? `<dt>ח.פ / ע.מ</dt><dd class="num">${esc(r.tax_id)}</dd>` : ''}
+        ${r.contact_name ? `<dt>איש קשר</dt><dd>${esc(r.contact_name)}</dd>` : ''}${r.email ? `<dt>דוא״ל</dt><dd>${esc(r.email)}</dd>` : ''}${r.address ? `<dt>כתובת</dt><dd>${esc(r.address)}</dd>` : ''}${r.note ? `<dt>הערה</dt><dd>${esc(r.note)}</dd>` : ''}</dl>` : ''}
     </div></aside>`;
 }
 
@@ -608,16 +713,21 @@ function render(force) {
   const scroll = $('.drawer__body')?.scrollTop;
   const focusId = a?.id, caret = a?.selectionStart;
   const key = S.palette ? 'pal' : o ? 'o' + o.order_no : S.rsl ? 'r' + S.rsl : S.cust ? 'c' + S.cust : S.acct ? 'acct' : '';
-  const n = { today: tasks().length, people: S.reviews.filter(r => r.status === 'pending').length, marketing: S.coupons ? abandoned().filter(x => hours(x.created_at) < 48).length : 0 };
-  const links = Object.entries(VIEWS).map(([k, [l, i]]) => `<a href="#${k}"${k === v ? ' aria-current="page"' : ''}>${ic(i)}<span>${l}</span>${n[k] ? `<span class="dot num">${n[k]}</span>` : ''}</a>`).join('');
-  const liveTag = `<span class="live${S.live ? ' is-on' : ''}">${S.live ? 'מתעדכן לבד' : 'מתעדכן כל דקה'}</span>`;
+  const n = { today: tasks().filter(k => k.hot >= 1).length, partners: S.resellers.filter(r => overdue(r).length).length, people: S.reviews.filter(r => r.status === 'pending').length, marketing: S.coupons ? abandoned().filter(x => hours(x.created_at) < 48).length : 0 };
+  const link = ([k, [l, i]]) => `<a href="#${k}"${k === v ? ' aria-current="page"' : ''}>${ic(i)}<span>${l}</span>${n[k] ? `<span class="dot num">${n[k]}</span>` : ''}</a>`;
+  const links = Object.entries(VIEWS).map(link).join('');
+  const rest = Object.entries(VIEWS).filter(([k]) => !PHONE_TABS.includes(k));
+  const tabs = Object.entries(VIEWS).filter(([k]) => PHONE_TABS.includes(k)).map(link).join('')
+    + `<button type="button" data-more${rest.some(([k]) => k === v) ? ' aria-current="page"' : ''}>${ic('orders')}<span>עוד</span>${rest.some(([k]) => n[k]) ? '<span class="dot num">•</span>' : ''}</button>`;
+  const liveTag = `<span class="live${S.syncFail ? ' is-bad' : S.live ? ' is-on' : ''}">${S.syncFail ? 'אין חיבור, מנסה שוב' : `עודכן ${S.syncedAt ? new Date(S.syncedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: TZ }) : ''}`}</span>`;
   app.innerHTML = `<div class="shell">
     <aside class="rail">${MARK}<nav class="nav" aria-label="ניווט ראשי">${links}</nav>
       <button class="btn btn--line btn--sm kbtn" data-palette>${ic('search', 'ic--sm')}חיפוש מהיר <kbd>⌘K</kbd></button>
       <div class="rail__foot">${liveTag}<button class="linkish" data-acct>${esc(userOf(S.me))} · החשבון</button></div></aside>
     <main class="main"><div class="mtop">${MARK}${liveTag}<button class="btn btn--ghost btn--icon" data-palette aria-label="חיפוש מהיר">${ic('search')}</button><button class="btn btn--ghost btn--icon" data-acct aria-label="החשבון שלי">${ic('user')}</button></div>
-      ${{ today: viewToday, orders: viewOrders, money: viewMoney, marketing: viewMarketing, stock: viewStock, people: viewPeople }[v]()}</main>
-    <nav class="tabbar" aria-label="ניווט ראשי">${links}</nav></div>
+      ${{ today: viewToday, orders: viewOrders, money: viewMoney, partners: viewPartners, marketing: viewMarketing, stock: viewStock, people: viewPeople }[v]()}</main>
+    <nav class="tabbar" aria-label="ניווט ראשי">${tabs}</nav>
+    ${S.more ? `<div class="scrim" data-mclose></div><div class="sheet" role="dialog" aria-label="עוד">${rest.map(link).join('')}<button type="button" data-acct>${ic('user')}<span>החשבון שלי</span></button></div>` : ''}</div>
     ${S.palette ? paletteBox() : o ? orderDrawer(o) : S.rsl ? rslDrawer(S.rsl) : S.cust ? custDrawer(S.cust) : S.acct ? acctDrawer() : ''}`;
   document.documentElement.classList.toggle('lock', !!key);
   if (scroll) $('.drawer__body').scrollTop = scroll;
@@ -680,15 +790,15 @@ async function enter(session) {
 
 let chan, poll, soonT;
 function startLive() {
-  const soon = () => { clearTimeout(soonT); soonT = setTimeout(() => refresh().catch(() => {}), 400); };
+  const soon = () => { clearTimeout(soonT); soonT = setTimeout(() => refresh().catch(() => { S.syncFail = true; render(); }), 400); };
   chan?.unsubscribe();
   chan = sb.channel('sway-admin');
   for (const table of ['orders_v2', 'order_shares', 'inventory']) chan.on('postgres_changes', { event: '*', schema: 'public', table }, soon);
   chan.subscribe(st => { const on = st === 'SUBSCRIBED'; if (on !== S.live) { S.live = on; render(); } });
   clearInterval(poll);
-  poll = setInterval(() => document.visibilityState === 'visible' && refresh().catch(() => {}), 60000);
+  poll = setInterval(() => document.visibilityState === 'visible' && refresh().catch(() => { S.syncFail = true; render(); }), 60000);
 }
-document.addEventListener('visibilitychange', () => { if (S.me && document.visibilityState === 'visible') refresh().catch(() => {}); });
+document.addEventListener('visibilitychange', () => { if (S.me && document.visibilityState === 'visible') refresh().catch(() => { S.syncFail = true; render(); }); });
 
 sb.auth.onAuthStateChange((evt, session) => {
   // supabase-js: never await other auth calls inside this callback, hence the setTimeout
@@ -698,6 +808,23 @@ sb.auth.onAuthStateChange((evt, session) => {
 });
 
 // ---------- actions ----------
+// a one-tap status change waits a few seconds with "ביטול" in the toast: a mis-tap never reaches the customer
+let pendingT;
+function later(btn, label, run) {
+  clearTimeout(pendingT);
+  btn?.classList.add('is-busy');
+  const t = $('.toast');
+  t.className = 'toast'; t.hidden = false;
+  t.innerHTML = `<span>${esc(label)}</span><button data-undo>ביטול</button>`;
+  t.querySelector('[data-undo]').onclick = () => { clearTimeout(pendingT); t.hidden = true; btn?.classList.remove('is-busy'); };
+  pendingT = setTimeout(() => { t.hidden = true; run(); }, 4000);
+}
+function downloadCsv(rows, name) {
+  const cell = c => { c = String(c); if (/^[=+\-@\t\r]/.test(c)) c = "'" + c; return `"${c.replace(/"/g, '""')}"`; };   // no Excel formulas
+  const csv = '\ufeff' + rows.map(r => r.map(cell).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: name });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
 const WHY = m => /bad_transition:(\w+)>(\w+)/.test(m) ? `אי אפשר לעבור מ"${ST[RegExp.$1]}" ל"${ST[RegExp.$2]}".`
   : /changed/.test(m) ? 'ההזמנה השתנתה בינתיים (אולי מהוואטסאפ). רעננתי, לבדוק שוב.' : m;
 async function act(btn, fn, okMsg) {
@@ -713,7 +840,8 @@ const setStatus = async (o, status) => {
   const { data } = must(await sb.from('orders_v2').update({ status }).eq('id', o.id).eq('status', o.status).select('id'));
   if (!data.length) throw new Error('changed');
 };
-const DONE = { paid: 'סומן כשולם', ready: 'מוכן לאיסוף', collected: 'נאסף', cancelled: 'בוטל' };
+const BACK = { ready: 'paid', collected: 'ready' };   // the steps back the database allows
+const DONE = { paid: 'סומן כשולם', ready: 'מוכן לאיסוף', collected: 'נאסף', cancelled: 'בוטל', new: 'חזר לממתין לתשלום' };
 const told = st => st === 'cancelled' ? '' : '. הלקוח מקבל עדכון בוואטסאפ';
 
 // confirm the money; the database turns the order 'paid' once no share is left (sway_v5 sway_shares_paid).
@@ -727,29 +855,49 @@ async function payAll(o, method = 'paybox') {
 
 app.addEventListener('click', async e => {
   if (e.target.closest('[data-pgo]')) { S.palette = false; return; }   // the link's hash change renders
-  const b = e.target.closest('button, a[data-ppl], [data-close], [data-pclose]');
+  if (e.target.closest('.sheet a')) { S.more = false; return; }
+  const b = e.target.closest('button, a[data-ppl], [data-close], [data-pclose], [data-mclose]');
   if (!b) return;
   const d = b.dataset;
   if (d.peek != null) { const i = b.previousElementSibling; i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'הצגה' : 'הסתרה'; return; }
   if (d.gate) return gate(d.gate);
   if (d.open) { location.hash = `#${route().v}/${d.open}`; return; }
   if (d.close != null) { S.cust = ''; S.rsl = 0; return closeDrawer(); }
-  if (d.acct != null) { S.acct = true; S.cust = ''; return render(true); }
+  if (d.acct != null) { S.acct = true; S.cust = ''; S.more = false; return render(true); }
   if (d.cust) { S.cust = d.cust; return render(true); }
-  if (d.rsl) { S.rsl = +d.rsl; return render(true); }
+  if (d.rsl) { S.rsl = +d.rsl; S.pact = ''; return render(true); }
+  if (d.pact) { S.pact = S.pact === d.pact ? '' : d.pact; return render(true); }
+  if (d.pnew != null) { S.pnew = !S.pnew; return render(true); }
+  if (d.more != null) { S.more = true; return render(true); }
+  if (d.mclose != null) { S.more = false; return render(true); }
+  if (d.pcsv) {
+    const r = S.resellers.find(x => x.id === +d.pcsv);
+    const rows = [['תאריך', 'פעולה', 'חובה', 'זכות', 'יתרה'], ...ledger(r).map(x => [new Date(x.t).toLocaleDateString('he-IL'),
+      x.o ? `Sway ${x.o.order_no} · ${items(x.o)}` : `תשלום ${METHOD[x.p.method] || ''}${x.p.receipt_no ? ' · חשבונית ' + x.p.receipt_no : ''}`, x.o ? x.amount : '', x.p ? -x.amount : '', x.bal])];
+    return downloadCsv(rows, `sway-${r.name}-כרטסת.csv`);
+  }
   if (d.rpdel) { if (!confirm('למחוק את התשלום?')) return; return act(b, async () => must(await sb.from('reseller_payments').delete().eq('id', d.rpdel)), 'התשלום נמחק'); }
   if (d.palette != null) { S.palette = true; S.palq = ''; return render(true); }
   if (d.pclose != null) { S.palette = false; return render(true); }
   if (d.mkt) { S.mkt = d.mkt; return render(true); }
   if (d.clink) {
     const url = `${base}?coupon=${encodeURIComponent(d.clink)}`;
-    await navigator.clipboard.writeText(url).catch(() => {});
-    return toast('הקישור הועתק: מי שנכנס דרכו מקבל את ההנחה אוטומטית');
+    const ok = await (navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false);
+    return toast(ok ? 'הקישור הועתק: מי שנכנס דרכו מקבל את ההנחה אוטומטית' : url, null, !ok);
   }
   if (d.ctoggle) { const c = S.coupons.find(x => x.code === d.ctoggle); return act(b, async () => must(await sb.from('coupons').update({ active: !c.active }).eq('code', c.code)), c.active ? 'הקופון הושהה' : 'הקופון פעיל'); }
   if (d.cdel) { if (!confirm(`למחוק את הקופון ${d.cdel}?`)) return; return act(b, async () => must(await sb.from('coupons').delete().eq('code', d.cdel)), 'הקופון נמחק'); }
   if (d.xdel) { if (!confirm('למחוק את ההוצאה?')) return; return act(b, async () => must(await sb.from('expenses').delete().eq('id', d.xdel)), 'ההוצאה נמחקה'); }
-  if (d.revive) { const o = byId(d.revive); return act(b, () => setStatus(o, 'new'), `Sway ${o.order_no} חזרה, ממתינה לתשלום`); }
+  if (d.refund) { if (!confirm('לסמן שהכסף הוחזר ללקוח? הוא יירד מההכנסות.')) return; return act(b, async () => must(await sb.from('order_shares').update({ refunded_at: new Date().toISOString() }).eq('id', d.refund)), 'נרשם שהכסף הוחזר'); }
+  if (d.custFrom) { S.cust = d.custFrom; history.replaceState(null, '', '#' + route().v); return render(true); }
+  if (d.stage) { S.stage = d.stage; return render(true); }
+  if (d.revive) {
+    const o = byId(d.revive);
+    return act(b, async () => {
+      const { data } = must(await sb.from('orders_v2').update({ status: 'new', created_at: new Date().toISOString(), reminded_at: null }).eq('id', o.id).eq('status', o.status).select('id'));
+      if (!data.length) throw new Error('changed');
+    }, `Sway ${o.order_no} חזרה, ממתינה לתשלום (48 שעות חדשות)`);
+  }
   if (d.logout != null) { S.acct = false; await sb.auth.signOut({ scope: 'local' }); return; }
   if (d.mode) { S.mode = d.mode; return render(true); }
   if (d.period) { S.period = d.period; return render(true); }
@@ -762,7 +910,13 @@ app.addEventListener('click', async e => {
   if (d.st) {
     const [id, st] = d.st.split(':'), o = byId(id);
     if (st === 'cancelled' && !confirm(`לבטל את Sway ${o.order_no} של ${o.name}?${paid$(o) ? `\nכבר שולם ${ils(paid$(o))}: צריך להחזיר ללקוח.` : ''}\nהלקוח יקבל הודעה בוואטסאפ.`)) return;
-    return act(b, () => setStatus(o, st), `Sway ${o.order_no} ${DONE[st]}${told(st)}`);
+    if (st === 'cancelled') return act(b, () => setStatus(o, st), `Sway ${o.order_no} ${DONE[st]}${told(st)}`);
+    // a step back is a correction: the customer already heard about that step, so no second message
+    if (BACK[o.status] === st) return later(b, `Sway ${o.order_no}: חזרה ל״${ST[st]}״`, () => act(null, async () => {
+      const { data } = must(await sb.from('orders_v2').update({ status: st, notified_status: st }).eq('id', o.id).eq('status', o.status).select('id'));
+      if (!data.length) throw new Error('changed');
+    }, `Sway ${o.order_no} חזרה ל״${ST[st]}״`));
+    return later(b, `Sway ${o.order_no}: ${DONE[st]}`, () => act(null, () => setStatus(o, st), `Sway ${o.order_no} ${DONE[st]}${told(st)}`));
   }
   if (d.share) {
     const o = byId(d.order), method = app.querySelector(`[data-method="${d.share}"]`).value;
@@ -773,18 +927,16 @@ app.addEventListener('click', async e => {
   }
   if (d.yesh) {
     const [oid, sid] = d.yesh.split(':'), o = byId(oid), s = o.order_shares.find(x => x.id === +sid);
-    window.open('https://user.yeshinvoice.co.il/', '_blank', 'noopener');   // first, while the tap still counts (Safari popups)
-    await navigator.clipboard.writeText(receipt(o, s)).catch(() => {});
-    return toast('פרטי הקבלה הועתקו. אחרי שמפיקים, לרשום כאן את מספר הקבלה.');
+    // the clipboard write starts first (it needs the page focused), then the new tab opens inside the same tap
+    const copied = navigator.clipboard?.writeText(receipt(o, s)).then(() => true, () => false) ?? Promise.resolve(false);
+    window.open('https://user.yeshinvoice.co.il/', '_blank', 'noopener');
+    return toast(await copied ? 'פרטי הקבלה הועתקו. אחרי שמפיקים, לרשום כאן את מספר הקבלה.' : 'ההעתקה נחסמה. הפרטים בכרטיס ההזמנה.', null, !(await copied));
   }
   if (d.rev) { const [id, status] = d.rev.split(':'); return act(b, async () => must(await sb.from('reviews').update({ status }).eq('id', id)), status === 'approved' ? 'הביקורת באתר' : 'הביקורת הוסתרה'); }
   if (d.csv != null) {
     const rows = [['תאריך', 'הזמנה', 'לקוח', 'טלפון', 'אמצעי', 'סכום', 'קבלה'],
       ...payments(S.period).map(x => [new Date(x.t).toLocaleDateString('he-IL'), ref(x.o, x.s), x.o.name, x.o.phone, METHOD[x.s.method] || 'לא צוין', x.s.amount, x.s.receipt_no || ''])];
-    const cell = c => { c = String(c); if (/^[=+\-@\t\r]/.test(c)) c = "'" + c; return `"${c.replace(/"/g, '""')}"`; };   // no Excel formulas
-    const csv = '\ufeff' + rows.map(r => r.map(cell).join(',')).join('\n');
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `sway-payments-${S.period}.csv` });
-    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    downloadCsv(rows, `sway-payments-${S.period}.csv`);
   }
 });
 document.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) { location.hash = g.dataset.go; $('.toast').hidden = true; } });
@@ -831,14 +983,35 @@ app.addEventListener('submit', async e => {
     return act(btn, async () => must(await sb.from('coupons').insert({ code, kind, value, ends_at: f.ends.value ? f.ends.value + 'T23:59:59+03:00' : null,
       max_uses: +f.max.value || null, note: f.note.value.trim() || null })), `הקופון ${code} נוצר`);
   }
-  if (d.rsNew != null) {
+  if (d.rsNew != null || d.rsEdit) {
     const phone = f.phone.value.replace(/\D/g, '').replace(/^972/, '0');
     if (!/^05\d{8}$/.test(phone)) return toast('טלפון בפורמט 05XXXXXXXX', null, true);
-    return act(btn, async () => must(await sb.from('resellers').insert({ name: f.name.value.trim(), phone, unit_price: +f.price.value })), 'המשווק נוסף');
+    const row = { name: f.name.value.trim(), phone, unit_price: +f.price.value, terms_days: +f.terms.value || 0, business_name: f.business.value.trim() || null,
+      tax_id: f.tax.value.trim() || null, contact_name: f.contact.value.trim() || null, email: f.email.value.trim() || null, address: f.address.value.trim() || null,
+      note: f.note.value.trim() || null, updated_at: new Date().toISOString() };
+    if (d.rsEdit) { row.active = f.active.checked; return act(btn, async () => { must(await sb.from('resellers').update(row).eq('id', d.rsEdit)); S.pact = ''; }, 'נשמר'); }
+    return act(btn, async () => { must(await sb.from('resellers').insert(row)); S.pnew = false; }, 'הספק נוסף');
   }
-  if (d.rsPay) return act(btn, async () => must(await sb.from('reseller_payments').insert({ reseller_id: +d.rsPay, amount: +f.amount.value, day: f.day.value,
-    method: f.method.value, receipt_no: f.receipt.value.trim() || null })), 'התשלום נרשם');
-  if (d.rsEdit) return act(btn, async () => must(await sb.from('resellers').update({ unit_price: +f.price.value, note: f.note.value.trim() || null, active: f.active.checked }).eq('id', d.rsEdit)), 'נשמר');
+  if (d.rsPay) return act(btn, async () => { must(await sb.from('reseller_payments').insert({ reseller_id: +d.rsPay, amount: +f.amount.value, day: f.day.value,
+    method: f.method.value, receipt_no: f.receipt.value.trim() || null })); S.pact = ''; }, 'התשלום נרשם');
+  if (d.rprc) return act(btn, async () => must(await sb.from('reseller_payments').update({ receipt_no: f.rc.value.trim() || null }).eq('id', d.rprc)), 'מספר החשבונית נשמר');
+  if (d.pOrder) {
+    const r = S.resellers.find(x => x.id === +d.pOrder), blue = Math.max(0, +f.blue.value | 0), brown = Math.max(0, +f.brown.value | 0), qty = blue + brown;
+    if (!qty) return toast('כמה ערסלים? לפחות אחד', null, true);
+    const file = f.label.files[0];
+    return act(btn, async () => {
+      // the barcode goes up first, so the order row carries it and the bot sends it to dad in the same message
+      let label_path = null;
+      if (file) {
+        label_path = `manual/${crypto.randomUUID()}.${file.type.includes('pdf') ? 'pdf' : file.type.includes('png') ? 'png' : 'jpg'}`;
+        must(await sb.storage.from('labels').upload(label_path, file, { contentType: file.type || 'image/jpeg' }));
+      }
+      must(await sb.from('orders_v2').insert({ status: 'paid', notified_status: 'paid', source: 'reseller', reseller_id: r.id, pickup: 'courier',
+        colour: blue && brown ? 'mixed' : blue ? 'blue' : 'brown', qty, qty_blue: blue, qty_brown: brown, unit_price: r.unit_price,
+        discount: qty * (C.price - r.unit_price), amount: qty * r.unit_price, name: r.name, phone: r.phone, people: 1, label_path }));
+      S.pact = '';
+    }, `ההזמנה נפתחה, ואבא מקבל אותה${file ? ' עם הברקוד' : ''}`);
+  }
   if (d.expense != null) return act(btn, async () => must(await sb.from('expenses').insert({ day: f.day.value, category: f.category.value, amount: +f.amount.value, note: f.note.value.trim() || null })), 'ההוצאה נוספה');
   if (d.settings != null) {
     const dp = f.dad_phone.value.replace(/\D/g, '').replace(/^972/, '0');
@@ -856,6 +1029,10 @@ app.addEventListener('submit', async e => {
   }
 });
 
+app.addEventListener('change', e => {
+  const d = e.target.dataset;
+  if (d.pickup) { const o = byId(d.pickup); act(null, async () => must(await sb.from('orders_v2').update({ pickup: e.target.value }).eq('id', o.id)), `האיסוף עודכן ל${PICK[e.target.value]}`); }
+});
 app.addEventListener('input', e => {
   if (e.target.id === 'pal') { S.palq = e.target.value; return render(true); }
   if (e.target.id !== 'q') return;
