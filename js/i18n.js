@@ -173,6 +173,7 @@ const DICT = {
     'co.notify.body': 'השאירו מספר ונכתוב לכם בוואטסאפ כשהוא חוזר.',
     'co.notify.btn': 'תודיעו לי',
     'co.notify.ok': 'רשמנו. תקבלו הודעה אחת בוואטסאפ כשהוא חוזר.',
+    'co.notify.err': 'לא הצלחנו לשמור. נסו שוב בעוד רגע.',
     'co.err.soldout': 'הצבע שבחרתם אזל הרגע. בחרו צבע אחר, או השאירו מספר ונודיע כשיחזור.',
 
     'co.email': 'דוא״ל, לשליחת הקבלה (לא חובה)',
@@ -510,6 +511,7 @@ const DICT = {
     'co.notify.body': 'Leave your number and we will message you on WhatsApp when it is back.',
     'co.notify.btn': 'Notify me',
     'co.notify.ok': 'Done. You will get one WhatsApp message when it is back.',
+    'co.notify.err': 'That did not save. Try again in a moment.',
     'co.err.soldout': 'That colour just sold out. Pick the other one, or leave your number and we will tell you when it is back.',
 
     'co.email': 'Email, for your receipt (optional)',

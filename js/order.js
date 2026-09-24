@@ -10,14 +10,14 @@
   const icon = (id, n = 16, flip = false) => `<svg class="i${flip ? ' i-flip' : ''}" width="${n}" height="${n}"><use href="#i-${id}"/></svg>`;
   const siteBase = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
 
-  async function api(fn, body) {
+  async function api(fn, body, empty = false) {   // empty: a void function (its success has no body)
     const r = await fetch(`${C.supabaseUrl}/rest/v1/rpc/${fn}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: C.supabaseKey, Authorization: `Bearer ${C.supabaseKey}` },
       body: JSON.stringify(body)
     });
     const d = await r.json().catch(() => null);
-    if (!r.ok || !d) throw new Error((d && d.message) || 'api');
+    if (!r.ok || (!d && !empty)) throw new Error((d && d.message) || 'api');
     return d;
   }
 
@@ -285,7 +285,7 @@
       S.draft = S.draft || Array.from(crypto.getRandomValues(new Uint8Array(20)), b => (b % 36).toString(36)).join('');
       let sid = null; try { sid = sessionStorage.getItem('sway-sid'); } catch {}
       api('save_draft', { p_token: S.draft, p_sid: sid, p_name: f.name.trim(), p_phone: tel, p_blue: S.blue, p_brown: S.brown,
-        p_people: S.group ? S.people : 1, p_pickup: f.pickup || null, p_coupon: S.couponInfo ? S.couponInfo.code : null, p_lang: I18N.lang })
+        p_people: S.group ? S.people : 1, p_pickup: f.pickup || null, p_coupon: S.couponInfo ? S.couponInfo.code : null, p_lang: I18N.lang }, true)
         .then(() => window.SwayTrack?.push('draft', null, true)).catch(() => {});
     }, 1200);
   }
@@ -365,9 +365,9 @@
       const c = nb.dataset.notify, tel = (dlg.querySelector(`[data-notify-phone="${c}"]`).value || '').replace(/\D/g, '').replace(/^(00)?972/, '0');
       if (!/^05\d{8}$/.test(tel)) { dlg.querySelector(`[data-notify-err="${c}"]`).textContent = t('co.err.phone'); return; }
       nb.disabled = true;
-      api('notify_me', { p_colour: c, p_phone: tel, p_lang: I18N.lang })
+      api('notify_me', { p_colour: c, p_phone: tel, p_lang: I18N.lang }, true)
         .then(() => { S.notified = { ...S.notified, [c]: true }; window.SwayTrack?.push('notify', c); render(); })
-        .catch(() => { nb.disabled = false; dlg.querySelector(`[data-notify-err="${c}"]`).textContent = t('co.offline'); });
+        .catch(() => { nb.disabled = false; dlg.querySelector(`[data-notify-err="${c}"]`).textContent = t('co.notify.err'); });
     }
   });
   dlg.addEventListener('change', e => {
