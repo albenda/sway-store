@@ -1,0 +1,2 @@
+{"name":"Sway ניהול","short_name":"Sway ניהול","lang":"he","dir":"rtl","start_url":"admin.html#today","scope":"./","display":"standalone","background_color":"#f8f4e9","theme_color":"#f8f4e9",
+ "icons":[{"src":"assets/brand/admin-icon-180.png","sizes":"180x180","type":"image/png"},{"src":"assets/brand/admin-icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
