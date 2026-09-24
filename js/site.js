@@ -157,7 +157,7 @@
 
   /* ---------- order buttons ---------- */
   $$('[data-order]').forEach(b => b.addEventListener('click', () => {
-    window.Order.open({ colour: b.dataset.colour || state.colour, group: b.dataset.order === 'group' });
+    window.Order.open({ colour: b.dataset.colour || state.colour, group: b.dataset.order === 'group', coupon: b.dataset.coupon });
   }));
 
   /* ---------- approved customer reviews ---------- */
@@ -178,6 +178,13 @@
     document.addEventListener('langchange', render);
     $('#reviews').hidden = false;
   }).catch(() => {});
+
+  // campaign code: copy button
+  $$('[data-copy-code]').forEach(b => b.addEventListener('click', () => {
+    navigator.clipboard?.writeText(b.dataset.copyCode).catch(() => {});
+    b.textContent = I18N.t('sk.copied');
+    setTimeout(() => { b.textContent = I18N.t('sk.copy'); }, 1800);
+  }));
 
   /* ---------- season line, evening mode (dusk blue after sunset in Israel) ---------- */
   const today = new Date().toISOString().slice(0, 10);

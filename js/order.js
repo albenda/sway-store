@@ -56,13 +56,31 @@
   const GD = C.groupDiscount;
 
   // display maths only; create_order_v2 recomputes everything server-side
+  // coupons live in the database (admin page > שיווק); coupon_check says if a code is good and for how much.
+  // create_order_v2 applies it again, so the price shown here is only a preview.
+  const norm = c => String(c || '').replace(/\s+/g, '').toUpperCase();
+  const couponOk = () => !!S.couponInfo;
+  async function applyCoupon(code) {
+    S.coupon = code; S.couponInfo = null;
+    if (norm(code)) S.couponInfo = await api('coupon_check', { p_code: norm(code) }).catch(() => null);
+    render();
+  }
+  function couponRow() {
+    const ok = couponOk(), tried = S.coupon && !ok;
+    return `<div class="co-coupon"><label for="co-coupon">${t('co.coupon')}</label>
+      <span class="co-coupon__row"><input id="co-coupon" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" value="${esc(S.coupon || '')}">
+      <button type="button" data-coupon-apply>${t('co.coupon.apply')}</button></span>
+      ${ok ? `<p class="co-hint co-coupon__ok">${t('co.coupon.ok', { v: S.couponInfo.kind === 'pct' ? S.couponInfo.value + '%' : money(S.couponInfo.value) })}</p>` : tried ? `<p class="co-err">${t('co.coupon.bad')}</p>` : ''}</div>`;
+  }
+
   function price() {
     const n = qty(), sub = n * C.price;
     // best single discount wins: pairs (2 for ₪850) or group of 3+
     const pair = Math.floor(n / 2) * C.pairDiscount;
     const group = S.group && n >= GD.minQty ? GD.perUnit * n : 0;
-    const discount = Math.max(pair, group);
-    const discountKey = group > pair ? 'co.discount' : 'co.discount.pair';
+    const ci = S.couponInfo, coupon = ci ? (ci.kind === 'pct' ? Math.round(sub * ci.value / 100) : Math.min(ci.value, sub)) : 0;
+    const discount = Math.max(pair, group, coupon);
+    const discountKey = discount === coupon ? 'co.discount.coupon' : group > pair ? 'co.discount' : 'co.discount.pair';
     return { n, sub, discount, discountKey, total: sub - discount };   // self pickup: no delivery fee
   }
 
@@ -103,6 +121,7 @@
       ${S.group ? `<div class="co-row"><span>${t('co.people')}</span>${stepper('data-people', S.people, t('co.people'), S.people > 2, S.people < C.maxGroup)}</div>
         <p class="co-hint">${t('co.each')}: <b>${money(sp.each)}</b>${sp.first !== sp.each ? ` · ${t('co.you.more')}: <b>${money(sp.first)}</b>` : ''}</p>
         ${tooSmall ? `<p class="co-err">${t('co.err.share')}</p>` : ''}` : ''}
+      ${couponRow()}
       ${summary(pr)}
       <button class="save-selection" type="button" data-next ${tooSmall ? 'disabled' : ''}>${t('co.next')}${icon('next', 20, true)}</button>
       <p class="purchase-disclaimer">${t('co.disclaimer')}</p>`;
@@ -235,7 +254,8 @@
         p_blue: S.blue, p_brown: S.brown, p_name: S.f.name, p_phone: S.f.phone,
         p_city: null, p_address: null, p_pickup: S.f.pickup, p_notes: S.f.notes || null,
         p_people: S.group ? S.people : null, p_lang: I18N.lang, p_email: S.f.email || null,
-        p_is_gift: S.gift, p_gift_note: S.gift ? (S.f.gnote || null) : null
+        p_is_gift: S.gift, p_gift_note: S.gift ? (S.f.gnote || null) : null,
+        p_coupon: S.couponInfo ? S.couponInfo.code : null
       });
       S.offline = false; S.active = null;
       document.dispatchEvent(new CustomEvent('sway:order', { detail: { value: S.res.amount, qty: qty() } }));
@@ -278,6 +298,7 @@
       return dlg.querySelector(`[data-people="${pp.dataset.people}"]:not(:disabled)`)?.focus();
     }
     if (el.closest('[data-next]')) { S.step = 2; render(); document.dispatchEvent(new Event('sway:details')); return dlg.querySelector('input')?.focus(); }
+    if (el.closest('[data-coupon-apply]')) return applyCoupon(dlg.querySelector('#co-coupon').value).then(() => dlg.querySelector('#co-coupon')?.focus());
     if (el.closest('[data-new-order]')) { Object.assign(S, { step: 1, res: null, offline: false, active: null }); return render(); }
     if (el.closest('[data-back]')) { S.f = readForm(dlg.querySelector('form')); S.step = 1; return render(); }
     const paid = el.closest('[data-paid]'); if (paid) api('report_share_paid', { p_token: paid.dataset.paid }).catch(() => {});
@@ -287,11 +308,15 @@
     if (e.target.id === 'co-gift') { S.f = readForm(dlg.querySelector('form')); S.gift = e.target.checked; render(); dlg.querySelector('#co-gift').focus(); }
   });
   dlg.addEventListener('input', e => { if (e.target.name === 'pickup') S.f.pickup = e.target.value; });
+  dlg.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'co-coupon') { e.preventDefault(); applyCoupon(e.target.value).then(() => dlg.querySelector('#co-coupon')?.focus()); } });
   dlg.addEventListener('submit', e => { e.preventDefault(); submit(e.target); });
   document.addEventListener('langchange', () => { if (dlg.open) render(); });
 
+  const urlCoupon = new URLSearchParams(location.search).get('coupon');
+  if (urlCoupon) S.coupon = urlCoupon;
   window.Order = {
-    open({ colour = 'blue', group = false } = {}) {
+    open({ colour = 'blue', group = false, coupon } = {}) {
+      if (coupon || (S.coupon && !S.couponInfo)) applyCoupon(coupon || S.coupon);
       // a created order stays on its confirm step until the customer starts a new one (the link must not get lost)
       if (S.step === 3 && !S.res) Object.assign(S, { step: 1, res: null, offline: false, active: null });
       if (!S.res && S.step === 1 && qty() <= 1) { S.blue = colour === 'blue' ? 1 : 0; S.brown = colour === 'brown' ? 1 : 0; S.view = null; }
