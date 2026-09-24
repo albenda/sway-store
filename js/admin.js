@@ -40,7 +40,7 @@ const MARK = '<span class="mark"><img src="assets/brand/logo-ink-160.png" alt=""
 
 const ST = { pending: 'לא אישר בוואטסאפ', new: 'ממתין לתשלום', paid: 'שולם, להכין', ready: 'מוכן לאיסוף', collected: 'נאסף', shipped: 'נשלח', cancelled: 'בוטל' };
 const PICK = { ashdod: 'אשדוד', nesziona: 'נס ציונה' };
-const METHOD = { bit: 'ביט', paybox: 'PayBox', transfer: 'העברה', cash: 'מזומן', other: 'אחר' };
+const METHOD = { paybox: 'PayBox', bit: 'ביט', transfer: 'העברה', cash: 'מזומן', other: 'אחר' };
 const COLOUR = { blue: 'כחול ים', brown: 'חום חול' };
 const VIEWS = { today: ['היום', 'today'], orders: ['הזמנות', 'orders'], money: ['כסף', 'money'], stock: ['מלאי', 'stock'], people: ['לקוחות', 'people'] };
 
@@ -60,14 +60,17 @@ const ref = (o, s) => `Sway ${o.order_no}${o.people > 1 ? '-' + s.n : ''}`;
 
 // customer texts (no em dash, the bot's voice)
 const T = {
-  pay: o => `היי ${first(o.name)}, תודה על ההזמנה Sway ${o.order_no}.\nלתשלום: ${ils(due(o) || o.amount)} בביט למספר ${C.bitPhone}.\nבהערה לכתוב: Sway ${o.order_no}`,
-  remind: o => `היי ${first(o.name)}, ההזמנה Sway ${o.order_no} עדיין מחכה לתשלום (${ils(due(o))} בביט למספר ${C.bitPhone}). יש שאלה? אני כאן.`,
+  pay: o => `היי ${first(o.name)}, תודה על ההזמנה Sway ${o.order_no}.\nלתשלום: ${ils(due(o) || o.amount)} ב־PayBox או בביט, למספר ${C.bitPhone}.\nבהערה לכתוב: Sway ${o.order_no}`,
+  remind: o => `היי ${first(o.name)}, ההזמנה Sway ${o.order_no} עדיין מחכה לתשלום (${ils(due(o))} ב־PayBox או בביט, למספר ${C.bitPhone}). יש שאלה? אני כאן.`,
   ready: o => o.pickup === 'nesziona'
     ? `היי ${first(o.name)}, הערסל מחכה לך בנס ציונה. מתי נוח לך לאסוף?`
     : `היי ${first(o.name)}, הערסל מוכן לאיסוף באשדוד, רחוב המתכת 21 (א׳-ה׳, 08:30-14:30). מתי נוח לך להגיע?`,
   review: o => `היי ${first(o.name)}, מקווים שאתם נהנים מהערסל. נשמח לביקורת קצרה, עם תמונה אם בא לכם: ${base}review.html?o=${o.token}`
 };
-const receipt = (o, s) => `קבלה\nלקוח: ${o.name}\nטלפון: ${o.phone}${o.email ? `\nדוא״ל: ${o.email}` : ''}\nפריט: ערסל Sway, ${items(o)}\nסכום: ${s.amount} ₪\nאמצעי תשלום: ${METHOD[s.method] || 'ביט'}\nתאריך: ${new Date(s.confirmed_at || Date.now()).toLocaleDateString('he-IL')}\nאסמכתא: ${ref(o, s)}`;
+// "I saw the money" buttons: one per app, so the receipt shows the right payment method
+const payBtns = (o, size, short) => ['paybox', 'bit'].map(m =>
+  `<button class="btn btn--coral ${size}" data-pay="${o.id}" data-via="${m}">${short ? '' : ic('check', 'ic--sm')}${short ? METHOD[m] : `שולם ב${m === 'bit' ? 'ביט' : '־PayBox'}`}</button>`).join('');
+const receipt = (o, s) => `קבלה\nלקוח: ${o.name}\nטלפון: ${o.phone}${o.email ? `\nדוא״ל: ${o.email}` : ''}\nפריט: ערסל Sway, ${items(o)}\nסכום: ${s.amount} ₪\nאמצעי תשלום: ${METHOD[s.method] || 'לא צוין'}\nתאריך: ${new Date(s.confirmed_at || Date.now()).toLocaleDateString('he-IL')}\nאסמכתא: ${ref(o, s)}`;
 
 // ---------- state + data ----------
 const S = { orders: [], reviews: [], inv: null, log: [], me: '', q: '', mode: 'board', period: 'month', ppl: 'customers', acct: false, live: false, flash: new Set() };
@@ -122,8 +125,8 @@ function tasks() {
   const add = (hot, icon, o, title, sub, act) => out.push({ hot, icon, o, title, sub, act });
   const open = o => `<button class="btn btn--line btn--sm" data-open="${o.order_no}">פרטים</button>`;
   for (const o of S.orders) {
-    if (reported(o)) add(2, 'money', o, `לבדוק בביט ${ils(payLabel(o))}`, `Sway ${o.order_no} · ${esc(o.name)} · דיווח ${ago(o.order_shares.find(s => s.status === 'reported').reported_at || o.created_at)}`,
-      `<button class="btn btn--coral btn--sm" data-pay="${o.id}">${ic('check', 'ic--sm')}ראיתי בביט, שולם</button>${open(o)}`);
+    if (reported(o)) add(2, 'money', o, `לבדוק ב־PayBox / ביט: ${ils(payLabel(o))}`, `Sway ${o.order_no} · ${esc(o.name)} · דיווח ${ago(o.order_shares.find(s => s.status === 'reported').reported_at || o.created_at)}`,
+      `${payBtns(o, 'btn--sm')}${open(o)}`);
     else if (o.status === 'new' && hours(o.created_at) >= 24) add(0, 'wa', o, 'עוד לא שילם', `Sway ${o.order_no} · ${esc(o.name)} · ${ago(o.created_at)}${o.reminded_at ? ' · הבוט כבר שלח תזכורת' : ''}. מתבטל לבד אחרי 48 שע׳`,
       `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.remind(o))}">${ic('wa', 'ic--sm')}תזכורת</a>${open(o)}`);
     if (o.status === 'paid') add(1, 'orders', o, o.pickup === 'nesziona' ? 'להביא לנס ציונה' : 'להכין לאיסוף באשדוד',
@@ -209,7 +212,7 @@ function viewToday() {
 
 function card(o) {
   const late = (o.status === 'new' && hours(o.created_at) >= 20) || (o.status === 'paid' && hours(o.created_at) >= 72);
-  const quick = reported(o) ? `<button class="btn btn--coral btn--sm" data-pay="${o.id}">שולם</button>`
+  const quick = reported(o) ? payBtns(o, 'btn--sm', true)
     : o.status === 'new' ? `<a class="btn btn--wa btn--sm" target="_blank" rel="noopener" href="${wa(o.phone, T.remind(o))}">${ic('wa', 'ic--sm')}תזכורת</a>`
     : o.status === 'paid' ? `<button class="btn btn--main btn--sm" data-st="${o.id}:ready">מוכן לאיסוף</button>`
     : o.status === 'ready' ? `<button class="btn btn--main btn--sm" data-st="${o.id}:collected">נאסף</button>` : '';
@@ -285,7 +288,7 @@ function viewMoney() {
       <button class="btn btn--line btn--sm" data-csv style="margin-inline-start:auto">${ic('download', 'ic--sm')}ייצוא לאקסל</button></h2>
       <div class="panel" style="overflow-x:auto"><table class="tbl"><thead><tr><th>תאריך</th><th>הזמנה</th><th>לקוח</th><th>אמצעי</th><th class="r">סכום</th><th>קבלה</th></tr></thead>
       <tbody>${pays.map(x => `<tr><td class="num">${day(x.t)}</td><td><button data-open="${x.o.order_no}">${ref(x.o, x.s)}</button></td><td>${esc(x.o.name)}</td>
-        <td>${METHOD[x.s.method] || 'ביט'}${x.o.status === 'cancelled' ? ' <span class="pill pill--cancelled">בוטל, להחזיר?</span>' : ''}</td><td class="r num">${ils(x.s.amount)}</td><td>${x.s.receipt_no ? `<span class="num">${esc(x.s.receipt_no)}</span>` : '<span class="pill pill--new">חסרה</span>'}</td></tr>`).join('')
+        <td>${METHOD[x.s.method] || 'לא צוין'}${x.o.status === 'cancelled' ? ' <span class="pill pill--cancelled">בוטל, להחזיר?</span>' : ''}</td><td class="r num">${ils(x.s.amount)}</td><td>${x.s.receipt_no ? `<span class="num">${esc(x.s.receipt_no)}</span>` : '<span class="pill pill--new">חסרה</span>'}</td></tr>`).join('')
         || '<tr><td colspan="6" class="empty">אין תשלומים בתקופה הזו.</td></tr>'}</tbody></table></div></section>`;
 }
 
@@ -351,7 +354,7 @@ function viewPeople() {
 function orderDrawer(o) {
   const idx = { new: 0, paid: 1, ready: 2, collected: 3 }[o.status] ?? -1;
   const steps = ['ממתין לתשלום', 'שולם', 'מוכן', 'נאסף'];
-  const main = o.status === 'new' ? `<button class="btn btn--coral" data-pay="${o.id}">${ic('check', 'ic--sm')}ראיתי בביט, שולם ${ils(payLabel(o))}</button>`
+  const main = o.status === 'new' ? payBtns(o, '')
     : o.status === 'paid' ? `<button class="btn btn--main" data-st="${o.id}:ready">מוכן לאיסוף</button>`
     : o.status === 'ready' ? `<button class="btn btn--main" data-st="${o.id}:collected">נאסף</button>` : '';
   const shareBox = shares(o).map(s => `<div class="share"><span><b>${o.people > 1 ? (s.n === 1 ? 'המזמין' : 'משתתף ' + s.n) : 'תשלום'} · <span class="num">${ils(s.amount)}</span></b>
@@ -515,7 +518,7 @@ const told = st => st === 'cancelled' ? '' : '. הלקוח מקבל עדכון �
 
 // confirm the money; the database turns the order 'paid' once no share is left (sway_v5 sway_shares_paid).
 // A group order confirms only the shares that reported paying.
-async function payAll(o, method = 'bit') {
+async function payAll(o, method = 'paybox') {
   let q = sb.from('order_shares').update({ status: 'confirmed', method, confirmed_at: new Date().toISOString() }).eq('order_id', o.id);
   q = o.people > 1 && reported(o) ? q.eq('status', 'reported') : q.neq('status', 'confirmed');
   const { data } = must(await q.select('id'));
@@ -538,7 +541,7 @@ app.addEventListener('click', async e => {
   if (d.find) { S.q = d.find; S.mode = 'all'; location.hash = '#orders'; return; }
   if (d.pay) {
     const o = byId(d.pay), part = o.people > 1 && o.order_shares.some(s => s.status === 'waiting');
-    return act(b, () => payAll(o), part ? `אושר ${ils(payLabel(o))} ב־Sway ${o.order_no}. מחכים לשאר המשתתפים` : `Sway ${o.order_no} ${DONE.paid}${told('paid')}`);
+    return act(b, () => payAll(o, d.via), part ? `אושר ${ils(payLabel(o))} ב־Sway ${o.order_no}. מחכים לשאר המשתתפים` : `Sway ${o.order_no} ${DONE.paid}${told('paid')}`);
   }
   if (d.st) {
     const [id, st] = d.st.split(':'), o = byId(id);
@@ -561,7 +564,7 @@ app.addEventListener('click', async e => {
   if (d.rev) { const [id, status] = d.rev.split(':'); return act(b, async () => must(await sb.from('reviews').update({ status }).eq('id', id)), status === 'approved' ? 'הביקורת באתר' : 'הביקורת הוסתרה'); }
   if (d.csv != null) {
     const rows = [['תאריך', 'הזמנה', 'לקוח', 'טלפון', 'אמצעי', 'סכום', 'קבלה'],
-      ...payments(S.period).map(x => [new Date(x.t).toLocaleDateString('he-IL'), ref(x.o, x.s), x.o.name, x.o.phone, METHOD[x.s.method] || 'ביט', x.s.amount, x.s.receipt_no || ''])];
+      ...payments(S.period).map(x => [new Date(x.t).toLocaleDateString('he-IL'), ref(x.o, x.s), x.o.name, x.o.phone, METHOD[x.s.method] || 'לא צוין', x.s.amount, x.s.receipt_no || ''])];
     const cell = c => { c = String(c); if (/^[=+\-@\t\r]/.test(c)) c = "'" + c; return `"${c.replace(/"/g, '""')}"`; };   // no Excel formulas
     const csv = '\ufeff' + rows.map(r => r.map(cell).join(',')).join('\n');
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `sway-payments-${S.period}.csv` });

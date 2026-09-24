@@ -3,7 +3,7 @@ window.SWAY = {
   price: 450,
   anchor: 700,               // real previous price (owner sold at ₪700)
   whatsapp: '972526849887',  // orders + confirmations (payments stay on bitPhone)
-  bitPhone: '055-2555269',
+  bitPhone: '055-2555269',   // the same number takes PayBox and Bit (PayBox first: no fee on receiving)
   payboxLink: '',            // permanent PayBox group link; empty = hide PayBox
   // private Supabase: organization "Sway", project "sway" (not the Cynect work account)
   supabaseUrl: 'https://flrgoetjaeabbesrmodx.supabase.co',
